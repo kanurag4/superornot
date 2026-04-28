@@ -295,7 +295,7 @@ function calculate() {
   const retirementAge      = parseInt(document.getElementById('retirementAge').value)    || 60;
 
   if (retirementAge <= currentAge) return;
-  const employerSuperRate  = (parseFloat(document.getElementById('employerRate').value)  || 11.5) / 100;
+  const employerSuperRate  = (parseFloat(document.getElementById('employerRate').value)  || 12) / 100;
   const currentSuperBalance = parseMoney(document.getElementById('superBalance'));
   const mortgageBalance    = parseMoney(document.getElementById('mortgageBalance'));
   const mortgageRate       = (parseFloat(document.getElementById('mortgageRate').value)  || 6.0) / 100;

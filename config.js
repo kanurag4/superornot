@@ -5,7 +5,7 @@ const DIV293_EXTRA_TAX = 0.15;          // additional tax; total becomes 0.30 fo
 const SUPER_EARNINGS_INCOME_TAX = 0.15; // tax on income (dividends/interest) inside super
 const SUPER_CGT_TAX = 0.10; // 15% tax on 2/3 of gain (1/3 inclusion reduction for assets held >12mo)
 const CGT_DISCOUNT = 0.50;             // 50% CGT discount for assets held > 12 months (personal)
-const DEFAULT_EMPLOYER_SUPER_RATE = 0.115; // 11.5% SG rate 2025-26
+const DEFAULT_EMPLOYER_SUPER_RATE = 0.12; // 12% SG rate 2025-26
 
 if (typeof module !== 'undefined') module.exports = {
   CONCESSIONAL_CAP,
