@@ -3,10 +3,11 @@
 :root {
   --kv-bg:      #0f172a;
   --kv-card:    #1e293b;
-  --kv-card-2:  #273449;
+  --kv-card-2:  #263248;
   --kv-text:    #f1f5f9;
   --kv-muted:   #94a3b8;
   --kv-accent:  #38bdf8;
+  --kv-accent-h: #0ea5e9;
   --kv-border:  #334155;
   --kv-pass:    #22c55e;
   --kv-fail:    #ef4444;
