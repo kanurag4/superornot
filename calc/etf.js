@@ -6,23 +6,25 @@
 //   utils.js   → marginalRate(income)
 //
 // inputs:
-//   salary          - annual pre-tax salary ($) — used to derive marginal rate
-//   currentAge      - integer
-//   retirementAge   - integer
-//   monthlyPreTax   - pre-tax monthly amount being redirected ($)
-//   totalReturn     - expected annual total return, decimal e.g. 0.08
-//   dividendYield   - income (dividends) portion of return, decimal e.g. 0.04
-//   frankingPct     - fraction of dividends that are franked, decimal e.g. 0.70
+//   salary                 - annual pre-tax salary ($) — used to derive marginal rate
+//   currentAge             - integer
+//   retirementAge          - integer
+//   monthlyPreTax          - pre-tax monthly amount being redirected ($)
+//   currentPortfolioBalance - existing portfolio balance ($); assumed purchased at current market value
+//   totalReturn            - expected annual total return, decimal e.g. 0.08
+//   dividendYield          - income (dividends) portion of return, decimal e.g. 0.04
+//   frankingPct            - fraction of dividends that are franked, decimal e.g. 0.70
 
 function etfProjection(inputs) {
   const {
-    salary         = 0,
-    currentAge     = 0,
-    retirementAge  = 60,
-    monthlyPreTax  = 0,
-    totalReturn    = 0,
-    dividendYield  = 0,
-    frankingPct    = 0,
+    salary                  = 0,
+    currentAge              = 0,
+    retirementAge           = 60,
+    monthlyPreTax           = 0,
+    currentPortfolioBalance = 0,
+    totalReturn             = 0,
+    dividendYield           = 0,
+    frankingPct             = 0,
   } = inputs;
 
   const years = retirementAge - currentAge;
@@ -34,14 +36,14 @@ function etfProjection(inputs) {
   // The ETF strategy invests the after-tax equivalent of the pre-tax sacrifice amount.
   const afterTaxContribution = monthlyPreTax * 12 * (1 - mr);
 
-  // --- Edge cases: no projection period or no contribution ---
-  if (years <= 0 || monthlyPreTax === 0) {
+  // --- Edge cases: no projection period or no contribution and no existing balance ---
+  if (years <= 0 || (monthlyPreTax === 0 && currentPortfolioBalance === 0)) {
     return {
       snapshots: [],
       finalPortfolio: 0,
       finalAfterTax: 0,
       cgt: 0,
-      annualContribution: afterTaxContribution,
+      netAnnualContribution: afterTaxContribution,
       mr,
     };
   }
@@ -49,12 +51,11 @@ function etfProjection(inputs) {
   // --- Year-by-year projection ---
   // Contribution assumed at start of year, then earnings applied.
   const snapshots = [];
-  let portfolio = 0;
-  let costBase  = 0;
+  let portfolio = currentPortfolioBalance;
+  let costBase  = currentPortfolioBalance;  // assume purchased at current market value
 
   for (let y = 1; y <= years; y++) {
-    // Add contribution at start of year
-    // Contribution at start of year (matches super.js convention — earns full year's return)
+    // Add contribution at start of year (earns full year's return — matches super.js convention)
     portfolio += afterTaxContribution;
     costBase  += afterTaxContribution;
 
@@ -63,10 +64,13 @@ function etfProjection(inputs) {
     const frankingCredit = grossDividend * frankingPct * (30 / 70);
     const taxableIncome  = grossDividend + frankingCredit;
     const taxOnDividend  = taxableIncome * mr - frankingCredit;
-    const netDividend    = grossDividend - Math.max(0, taxOnDividend);   // franking refund possible
+    // taxOnDividend negative = refund flows through as extra income (Australian franking refund)
+    const netDividend    = grossDividend - taxOnDividend;
+    // negative if dividendYield > totalReturn — allowed, not clamped
     const capitalGrowth  = portfolio * (totalReturn - dividendYield);
 
     portfolio += capitalGrowth + netDividend;
+    costBase  += netDividend;   // already-taxed dividends increase cost base (no double CGT)
 
     // Mid-year "if sold today" estimate (for chart)
     const unrealisedGain = Math.max(0, portfolio - costBase);
@@ -91,7 +95,7 @@ function etfProjection(inputs) {
     finalPortfolio: portfolio,
     finalAfterTax,
     cgt,
-    annualContribution: afterTaxContribution,
+    netAnnualContribution: afterTaxContribution,
     mr,
   };
 }
