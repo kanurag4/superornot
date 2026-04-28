@@ -46,9 +46,10 @@ function updateDerived() {
   const mrPct = Math.round(mr * 100);
 
   // salaryDerived
-  const salaryText = mrPct > 0
+  let salaryText = mrPct > 0
     ? `Marginal rate: ${mrPct}% (incl. 2% Medicare)`
     : 'Below tax-free threshold';
+  if (salary > DIV293_THRESHOLD) salaryText += ' · Div 293 applies';
   document.getElementById('salaryDerived').textContent = salaryText;
 
   // afterTaxDerived
@@ -88,20 +89,19 @@ function renderAnnualCards(superResult, etfResult, offsetResult) {
 
   // ETF — Year 1 net portfolio growth
   let etfValue = fmt(0);
-  let etfSub = 'After dividend tax & franking credits';
+  let etfSub = 'after dividend tax';
   if (etfResult.snapshots.length > 0) {
     const year1Growth = etfResult.snapshots[0].portfolio - etfResult.netAnnualContribution;
     etfValue = fmt(Math.max(0, year1Growth));
   }
 
   // Offset — Year 1 interest saved
-  let offValue = '$0';
-  let offSub = 'No mortgage balance entered';
+  let offValue = '$0 — no mortgage';
+  let offSub = 'tax-free saving';
   if (offsetResult.snapshots.length > 0) {
     const mortgageBal = parseMoney(document.getElementById('mortgageBalance'));
     if (mortgageBal > 0) {
       offValue = fmt(offsetResult.snapshots[0].interestSaved);
-      offSub = 'Tax-free interest saving';
     }
   }
 
@@ -112,7 +112,7 @@ function renderAnnualCards(superResult, etfResult, offsetResult) {
       <div class="card-sub">${superSub}</div>
     </div>` +
     `<div class="card summary-card card-etf">
-      <div class="card-label">ETF investing</div>
+      <div class="card-label">Invest after tax</div>
       <div class="card-value">${etfValue}</div>
       <div class="card-sub">${etfSub}</div>
     </div>` +
@@ -246,10 +246,6 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
     },
   });
 
-  // Resize chart when year-by-year details section is toggled open
-  document.getElementById('yearDetails').addEventListener('toggle', () => {
-    if (projChart) projChart.resize();
-  });
 }
 
 // ─── Year-by-year table ──────────────────────────────────────────────────────
@@ -363,4 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Run live derived update once on load (reflect restored values)
   updateDerived();
+
+  // Resize chart when year-by-year details section is toggled open (bound once)
+  document.getElementById('yearDetails').addEventListener('toggle', () => {
+    if (projChart) projChart.resize();
+  });
 });
