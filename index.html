@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <script src="/kv-theme.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>Salary Sacrifice Calculator — Super vs ETFs vs Offset | KashVector</title>
+  <meta name="description" content="Compare salary sacrifice into super vs ETF investing vs mortgage offset. Full Australian tax model: Division 293, 15% super earnings tax, CGT discount. Free, no sign-up.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Salary Sacrifice Calculator",
+    "url": "https://kashvector.com/super-compare/",
+    "description": "Compare salary sacrifice into super versus ETF investing versus mortgage offset with full Australian tax modelling.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "AUD" }
+  }
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <a href="../" class="home-logo" aria-label="KashVector home">
+    <img src="../logo.svg" alt="KashVector" width="32" height="32">
+  </a>
+  <h1>
+    <img src="../super-compare.png" alt="" width="32" height="32" style="vertical-align:middle;margin-right:8px;border-radius:6px">
+    Salary Sacrifice Calculator
+  </h1>
+  <p>Super vs ETFs vs Offset — find your best move</p>
+  <button class="theme-toggle" onclick="window.kvTheme.toggle()" aria-label="Toggle theme"></button>
+</header>
+
+<main>
+  <div class="layout">
+
+    <!-- ── Input panel ── -->
+    <aside class="input-panel">
+
+      <!-- Group 1: Your Details -->
+      <div class="input-group">
+        <h3 class="group-title">Your Details</h3>
+
+        <div class="field">
+          <label for="salary">Annual salary (pre-tax)</label>
+          <div class="input-wrap">
+            <span class="currency-prefix">$</span>
+            <input type="text" inputmode="numeric" id="salary" class="money-input" placeholder="120,000">
+          </div>
+          <div class="derived" id="salaryDerived"></div>
+        </div>
+
+        <div class="field">
+          <label for="currentAge">Current age</label>
+          <input type="number" id="currentAge" class="num-input" min="18" max="70" placeholder="35">
+        </div>
+
+        <div class="field">
+          <label for="retirementAge">Retirement age</label>
+          <input type="number" id="retirementAge" class="num-input" min="40" max="80" placeholder="60">
+        </div>
+
+        <div class="field">
+          <label for="monthlyPreTax">Extra amount (pre-tax/mo)</label>
+          <div class="input-wrap">
+            <span class="currency-prefix">$</span>
+            <input type="text" inputmode="numeric" id="monthlyPreTax" class="money-input" placeholder="500">
+          </div>
+          <div class="derived" id="afterTaxDerived"></div>
+        </div>
+
+        <div class="field">
+          <label for="employerRate">Employer super rate</label>
+          <div class="input-wrap">
+            <input type="number" id="employerRate" class="num-input pct-input" placeholder="11.5" min="0" max="30" step="0.5">
+            <span class="pct-suffix">%</span>
+          </div>
+          <div class="derived hidden" id="capDerived"></div>
+        </div>
+      </div>
+
+      <!-- Group 2: Your Super -->
+      <div class="input-group">
+        <h3 class="group-title">Your Super</h3>
+
+        <div class="field">
+          <label for="superBalance">Current super balance</label>
+          <div class="input-wrap">
+            <span class="currency-prefix">$</span>
+            <input type="text" inputmode="numeric" id="superBalance" class="money-input" placeholder="80,000">
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 3: Mortgage (Offset Strategy) -->
+      <div class="input-group">
+        <h3 class="group-title">Mortgage (Offset Strategy)</h3>
+
+        <div class="field">
+          <label for="mortgageBalance">Mortgage balance</label>
+          <div class="input-wrap">
+            <span class="currency-prefix">$</span>
+            <input type="text" inputmode="numeric" id="mortgageBalance" class="money-input" placeholder="500,000">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="mortgageRate">Interest rate</label>
+          <div class="input-wrap">
+            <input type="number" id="mortgageRate" class="num-input pct-input" placeholder="6.0" min="0" max="20" step="0.1">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="mortgageTerm">Remaining term</label>
+          <div class="input-wrap">
+            <input type="number" id="mortgageTerm" class="num-input" placeholder="25" min="1" max="40" step="1">
+            <span class="pct-suffix">years</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Group 4: Investment Assumptions -->
+      <div class="input-group">
+        <h3 class="group-title">Investment Assumptions</h3>
+
+        <div class="field">
+          <label for="totalReturn">Expected return</label>
+          <div class="input-wrap">
+            <input type="number" id="totalReturn" class="num-input pct-input" placeholder="8.0" min="0" max="30" step="0.1">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="dividendYield">Dividend yield</label>
+          <div class="input-wrap">
+            <input type="number" id="dividendYield" class="num-input pct-input" placeholder="4.0" min="0" max="20" step="0.1">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="frankingPct">Franking</label>
+          <div class="input-wrap">
+            <input type="number" id="frankingPct" class="num-input pct-input" placeholder="70" min="0" max="100" step="5">
+            <span class="pct-suffix">%</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-calculate" id="btnCalculate" onclick="calculate()">Calculate</button>
+
+    </aside>
+
+    <!-- ── Results panel ── -->
+    <section class="results-panel" id="resultsPanel">
+
+      <!-- Warning banners (hidden by default, shown by JS) -->
+      <div class="banner banner-warn hidden" id="bannerDiv293">
+        Division 293 tax applies — your super contributions are taxed at 30% (not 15%) because your income exceeds $250,000. Super still beats investing after-tax at 47%.
+      </div>
+      <div class="banner banner-warn hidden" id="bannerCapBreached">
+        Concessional cap warning: your employer + salary sacrifice contributions exceed the $30,000 annual cap. Only the first $30k receives the 15% tax concession.
+      </div>
+
+      <!-- Placeholder shown before first calculation -->
+      <div class="placeholder" id="placeholder">
+        <p>Enter your details and click Calculate to compare your options.</p>
+      </div>
+
+      <!-- Results (hidden until calculated) -->
+      <div class="hidden" id="results">
+
+        <!-- Annual benefit section -->
+        <div class="section-title">Year 1 benefit</div>
+        <div class="strategy-cards" id="annualCards">
+          <!-- 3 cards rendered by JS -->
+        </div>
+
+        <!-- Wealth at retirement section -->
+        <div class="section-title">Wealth at retirement (age <span id="retireAgeLabel">60</span>)</div>
+        <div class="strategy-cards" id="wealthCards">
+          <!-- 3 cards rendered by JS -->
+        </div>
+
+        <!-- Projection chart -->
+        <div class="card chart-card">
+          <h3 class="card-title">Wealth projection over time</h3>
+          <canvas id="projectionChart"></canvas>
+        </div>
+
+        <!-- Year-by-year table -->
+        <details class="card" id="yearDetails">
+          <summary><span class="card-title">Year-by-year breakdown</span></summary>
+          <div class="table-wrap">
+            <table class="year-table">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Age</th>
+                  <th>Super</th>
+                  <th>ETFs (pre-CGT)</th>
+                  <th>ETFs (after CGT)</th>
+                  <th>Offset</th>
+                  <th>Best</th>
+                </tr>
+              </thead>
+              <tbody id="yearTableBody"></tbody>
+            </table>
+          </div>
+        </details>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<section class="tool-info">
+  <div class="tool-about">
+    <h2>About this tool</h2>
+    <p>Compare three ways to put extra money to work: salary sacrifice into super, investing after-tax in ETFs, or directing funds into a mortgage offset account. The calculator models full Australian tax rules including Division 293, the 15% super earnings tax, CGT discount on long-held ETFs, and franking credit offsets.</p>
+    <p>Results depend on your salary, marginal rate, super balance, mortgage terms, and assumed investment returns. Use this to understand the trade-offs before speaking with a licensed financial adviser.</p>
+  </div>
+  <div class="tool-faq">
+    <h2>Frequently asked questions</h2>
+    <details class="faq-item">
+      <summary>Is salary sacrifice worth it in Australia?</summary>
+      <p>For most people, yes. Even with Division 293 tax (30%), super contributions are still taxed far less than investing after-tax at your marginal rate of up to 47%. Long-term, the lower tax on super earnings (15%) compounds faster than a taxable ETF account, making salary sacrifice attractive for almost all income levels.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What is Division 293 tax?</summary>
+      <p>Division 293 is an extra 15% tax applied to concessional super contributions (salary sacrifice + employer contributions) when your combined income and contributions exceed $250,000. This brings the total tax on those contributions to 30% — still well below the 47% marginal rate that would apply if you invested the same money after-tax.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Mortgage offset or super — which is better?</summary>
+      <p>It depends on your mortgage interest rate, marginal tax rate, and years to retirement. A guaranteed mortgage rate saving of 6% can beat a volatile ETF expected return — especially after tax. But super's tax-sheltered compounding often wins over longer horizons. This calculator models both directly so you can compare with your own numbers.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Is this calculator free and private?</summary>
+      <p>Yes — completely free, no sign-up required, and no data is sent to any server. All calculations run entirely in your browser. Nothing you enter is stored or transmitted.</p>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <p>Not financial advice. Projections assume constant returns — actual results will vary. Consult a licensed financial adviser for personal advice.</p>
+  <p><a href="../">← All KashVector tools</a></p>
+</footer>
+
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="calc/super.js"></script>
+<script src="calc/etf.js"></script>
+<script src="calc/offset.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
