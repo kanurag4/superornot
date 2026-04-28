@@ -15,7 +15,6 @@
 //   mortgageTerm    - remaining years on mortgage
 //   totalReturn     - decimal — after-mortgage payoff, money reinvests at this rate
 //   dividendYield   - decimal — for post-mortgage reinvestment after-tax return
-//   frankingPct     - decimal — for post-mortgage reinvestment
 
 function offsetProjection(inputs) {
   const {
@@ -28,7 +27,6 @@ function offsetProjection(inputs) {
     mortgageTerm    = 0,
     totalReturn     = 0,
     dividendYield   = 0,
-    frankingPct     = 0,
   } = inputs;
 
   const years = retirementAge - currentAge;
@@ -63,12 +61,12 @@ function offsetProjection(inputs) {
   // Contribution assumed at start of year, then earnings/savings applied.
   const snapshots = [];
   let offsetBalance      = 0;
-  let mortgageBalance    = initialMortgageBalance;
   let totalInterestSaved = 0;
-  let mortgagePaidOffYear = null;
 
-  // If mortgage is already zero from the start, skip mortgage phase entirely.
-  const mortgageAlreadyGone = initialMortgageBalance <= 0;
+  // Mortgage runs for its full term — balance is not dynamically reduced.
+  // mortgagePaidOffYear is fixed at mortgageTerm (or null if term outlasts projection).
+  const mortgagePaidOffYear =
+    initialMortgageBalance > 0 && mortgageTerm < years ? mortgageTerm : null;
 
   for (let y = 1; y <= years; y++) {
     const age = currentAge + y;
@@ -76,46 +74,27 @@ function offsetProjection(inputs) {
     // Add contribution at start of year (matches super.js / etf.js convention).
     offsetBalance += afterTaxContribution;
 
-    // Mortgage phase: active while the mortgage hasn't been paid off, term hasn't
-    // elapsed, and mortgage was non-zero from the start.
-    const inMortgagePhase =
-      !mortgageAlreadyGone &&
-      mortgagePaidOffYear === null &&
-      y <= mortgageTerm &&
-      mortgageBalance > 0;
-
-    // Post-mortgage reinvestment phase: only when the mortgage is definitively gone
-    // (paid off early, or never existed). Does NOT trigger when y > mortgageTerm —
-    // if the mortgage outlasts the projection there is no reinvestment phase.
-    const inReinvestmentPhase =
-      mortgageAlreadyGone ||
-      (mortgagePaidOffYear !== null && y > mortgagePaidOffYear);
+    const inMortgagePhase     = initialMortgageBalance > 0 && y <= mortgageTerm;
+    const inReinvestmentPhase = !inMortgagePhase;
 
     let interestSaved = 0;
 
     if (inMortgagePhase) {
       // Interest saved = offset balance * mortgage rate (tax-free benefit).
-      interestSaved    = offsetBalance * mortgageRate;
-      mortgageBalance  = Math.max(0, mortgageBalance - interestSaved);
+      // The mortgage balance is NOT reduced — it runs its full term.
+      interestSaved       = offsetBalance * mortgageRate;
       totalInterestSaved += interestSaved;
-
-      if (mortgageBalance <= 0) {
-        mortgagePaidOffYear = y;
-      }
     } else if (inReinvestmentPhase) {
       // Post-mortgage phase: offset balance earns investment returns.
       // Contribution was already added above; now apply growth for the year.
       offsetBalance = offsetBalance * (1 + afterTaxReturn);
     }
-    // Years where neither condition is true (mortgage outlasted projection, or the
-    // year the mortgage was just paid off): offset balance accumulates contributions
-    // only — no interest saving, no investment growth yet.
 
     snapshots.push({
       year: y,
       age,
       offsetBalance,
-      mortgageBalance: Math.max(0, mortgageBalance),
+      mortgageBalance: inMortgagePhase ? initialMortgageBalance : 0,
       interestSaved,
     });
   }
