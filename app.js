@@ -26,7 +26,9 @@ function restoreInputs() {
       const el = document.getElementById(id);
       if (el && data[id]) el.value = data[id];
     });
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Failed to restore inputs from localStorage:', e);
+  }
 }
 
 // ─── Live derived updates (debounced) ────────────────────────────────────────
@@ -78,7 +80,7 @@ function toggleBanner(id, show) {
 
 // ─── Card rendering ──────────────────────────────────────────────────────────
 
-function renderAnnualCards(superResult, etfResult, offsetResult) {
+function renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance) {
   const container = document.getElementById('annualCards');
 
   // Super — Year 1 tax saving
@@ -98,11 +100,8 @@ function renderAnnualCards(superResult, etfResult, offsetResult) {
   // Offset — Year 1 interest saved
   let offValue = '$0 — no mortgage';
   let offSub = 'tax-free saving';
-  if (offsetResult.snapshots.length > 0) {
-    const mortgageBal = parseMoney(document.getElementById('mortgageBalance'));
-    if (mortgageBal > 0) {
-      offValue = fmt(offsetResult.snapshots[0].interestSaved);
-    }
+  if (mortgageBalance > 0 && offsetResult.snapshots.length > 0) {
+    offValue = fmt(offsetResult.snapshots[0].interestSaved);
   }
 
   container.innerHTML =
@@ -130,11 +129,11 @@ function renderWealthCards(superResult, etfResult, offsetResult, retirementAge) 
   const etfFinal   = etfResult.finalAfterTax;
   const offFinal   = offsetResult.finalWealth;
 
-  // Determine winner
+  // Determine winner — use === maxVal so ties show multiple winners
   const maxVal = Math.max(superFinal, etfFinal, offFinal);
-  const superWins  = superFinal >= maxVal;
-  const etfWins    = !superWins && etfFinal >= maxVal;
-  const offsetWins = !superWins && !etfWins;
+  const superWins  = superFinal === maxVal;
+  const etfWins    = etfFinal   === maxVal;
+  const offsetWins = offFinal   === maxVal;
 
   const currentAge = parseInt(document.getElementById('currentAge').value) || 35;
   const years = retirementAge - currentAge;
@@ -245,7 +244,6 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
       },
     },
   });
-
 }
 
 // ─── Year-by-year table ──────────────────────────────────────────────────────
@@ -295,6 +293,8 @@ function calculate() {
   const monthlyPreTax      = parseMoney(document.getElementById('monthlyPreTax'));
   const currentAge         = parseInt(document.getElementById('currentAge').value)       || 35;
   const retirementAge      = parseInt(document.getElementById('retirementAge').value)    || 60;
+
+  if (retirementAge <= currentAge) return;
   const employerSuperRate  = (parseFloat(document.getElementById('employerRate').value)  || 11.5) / 100;
   const currentSuperBalance = parseMoney(document.getElementById('superBalance'));
   const mortgageBalance    = parseMoney(document.getElementById('mortgageBalance'));
@@ -330,7 +330,7 @@ function calculate() {
   document.getElementById('retireAgeLabel').textContent = retirementAge;
 
   // Render sections
-  renderAnnualCards(superResult, etfResult, offsetResult);
+  renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance);
   renderWealthCards(superResult, etfResult, offsetResult, retirementAge);
   renderChart(superResult, etfResult, offsetResult, currentAge, retirementAge);
   renderYearTable(superResult, etfResult, offsetResult);
