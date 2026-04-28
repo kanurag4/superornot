@@ -122,12 +122,14 @@ function renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance
     </div>`;
 }
 
-function renderWealthCards(superResult, etfResult, offsetResult, retirementAge) {
+function renderWealthCards(superResult, superBaseResult, etfResult, offsetResult, retirementAge) {
   const container = document.getElementById('wealthCards');
 
-  const superFinal = superResult.finalBalance;
-  const etfFinal   = etfResult.finalAfterTax;
-  const offFinal   = offsetResult.finalWealth;
+  const superFinal    = superResult.finalBalance;
+  const superBaseline = superBaseResult.finalBalance;
+  const superAdded    = superFinal - superBaseline;
+  const etfFinal      = etfResult.finalAfterTax;
+  const offFinal      = offsetResult.finalWealth;
 
   // Determine winner — use === maxVal so ties show multiple winners
   const maxVal = Math.max(superFinal, etfFinal, offFinal);
@@ -138,7 +140,6 @@ function renderWealthCards(superResult, etfResult, offsetResult, retirementAge) 
   const currentAge = parseInt(document.getElementById('currentAge').value) || 35;
   const years = retirementAge - currentAge;
 
-  const superSub = `Years to retirement: ${years}`;
   const etfSub   = `After CGT (${fmt(etfResult.cgt)} est.)`;
   const offSub   = offsetResult.mortgagePaidOffYear
     ? `Mortgage paid off year ${offsetResult.mortgagePaidOffYear}`
@@ -148,7 +149,8 @@ function renderWealthCards(superResult, etfResult, offsetResult, retirementAge) 
     `<div class="card summary-card card-super${superWins ? ' pass' : ''}">
       <div class="card-label">Super</div>
       <div class="card-value">${fmt(superFinal)}</div>
-      <div class="card-sub">${superSub}</div>
+      <div class="card-sub">Without sacrifice: ${fmtM(superBaseline)}</div>
+      <div class="card-sub">Sacrifice adds: +${fmtM(superAdded)}</div>
     </div>` +
     `<div class="card summary-card card-etf${etfWins ? ' pass' : ''}">
       <div class="card-label">ETFs (after CGT)</div>
@@ -310,6 +312,12 @@ function calculate() {
     employerSuperRate, currentSuperBalance, totalReturn, dividendYield,
   });
 
+  // Employer-only baseline (no salary sacrifice) for wealth card breakdown
+  const superBaseResult = superProjection({
+    salary, currentAge, retirementAge, monthlyPreTax: 0,
+    employerSuperRate, currentSuperBalance, totalReturn, dividendYield,
+  });
+
   const etfResult = etfProjection({
     salary, currentAge, retirementAge, monthlyPreTax,
     currentPortfolioBalance: 0, totalReturn, dividendYield, frankingPct,
@@ -331,7 +339,7 @@ function calculate() {
 
   // Render sections
   renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance);
-  renderWealthCards(superResult, etfResult, offsetResult, retirementAge);
+  renderWealthCards(superResult, superBaseResult, etfResult, offsetResult, retirementAge);
   renderChart(superResult, etfResult, offsetResult, currentAge, retirementAge);
   renderYearTable(superResult, etfResult, offsetResult);
 }
