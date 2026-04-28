@@ -54,6 +54,7 @@ function etfProjection(inputs) {
 
   for (let y = 1; y <= years; y++) {
     // Add contribution at start of year
+    // Contribution at start of year (matches super.js convention — earns full year's return)
     portfolio += afterTaxContribution;
     costBase  += afterTaxContribution;
 
