@@ -35,12 +35,28 @@ body {
 
 .home-logo {
   position: absolute;
-  top: 18px;
+  top: 12px;
   left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-decoration: none;
 }
 
-.home-logo img { width: 32px; height: 32px; opacity: 0.9; display: block; }
+.home-logo img { width: 32px; height: 32px; opacity: 0.9; display: block; transition: opacity 0.15s; }
 .home-logo:hover img { opacity: 1; }
+
+.home-logo-label {
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--kv-muted);
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.home-logo:hover .home-logo-label { color: var(--kv-accent); }
 
 .app-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
 .app-header > p { color: var(--kv-muted); font-size: 0.88rem; margin-top: 4px; }
@@ -238,6 +254,12 @@ main {
   gap: 16px;
 }
 
+#results {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 /* ── Placeholder ── */
 
 .placeholder {
@@ -258,7 +280,8 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--kv-muted);
-  margin-top: 4px;
+  margin-top: 0;
+  margin-bottom: -8px;
 }
 
 /* ── Strategy cards ── */
