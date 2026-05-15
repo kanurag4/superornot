@@ -1,11 +1,11 @@
-// Australian income tax + Medicare levy 2025-26
+// Australian income tax + Medicare levy 2026-27 (effective 1 July 2026)
 function marginalRate(income) {
   const n = (income != null && isFinite(income)) ? Number(income) : 0;
-  if (n <= 18200)   return 0;   // tax-free threshold (covers zero/negative inputs)
-  if (n <= 45000)   return 0.21;
-  if (n <= 120000)  return 0.345;
-  if (n <= 180000)  return 0.39;
-  return 0.47;
+  if (n <= 18200)   return 0;    // tax-free threshold (covers zero/negative inputs)
+  if (n <= 45000)   return 0.17; // 15% base + 2% Medicare
+  if (n <= 135000)  return 0.32; // 30% base + 2% Medicare
+  if (n <= 190000)  return 0.39; // 37% base + 2% Medicare
+  return 0.47;                   // 45% base + 2% Medicare
 }
 
 function safe(v) {

@@ -342,6 +342,7 @@ function calculate() {
   // Banners
   toggleBanner('bannerDiv293', superResult.div293Applies);
   toggleBanner('bannerCapBreached', superResult.capBreached);
+  toggleBanner('bannerDiv296', superResult.div296Applies);
 
   // Show results
   document.getElementById('placeholder').classList.add('hidden');
