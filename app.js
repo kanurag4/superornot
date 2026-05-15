@@ -287,6 +287,17 @@ function renderYearTable(superResult, etfResult, offsetResult) {
   tbody.innerHTML = html;
 }
 
+function scrollResultsIntoView() {
+  const resultsPanel = document.getElementById('resultsPanel');
+  if (!resultsPanel) return;
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  resultsPanel.scrollIntoView({
+    behavior: reduceMotion ? 'auto' : 'smooth',
+    block: 'start',
+  });
+}
+
 // ─── Main calculate entry point ──────────────────────────────────────────────
 
 function calculate() {
@@ -342,6 +353,8 @@ function calculate() {
   renderWealthCards(superResult, superBaseResult, etfResult, offsetResult, retirementAge);
   renderChart(superResult, etfResult, offsetResult, currentAge, retirementAge);
   renderYearTable(superResult, etfResult, offsetResult);
+
+  requestAnimationFrame(scrollResultsIntoView);
 }
 
 // ─── DOMContentLoaded init ───────────────────────────────────────────────────
