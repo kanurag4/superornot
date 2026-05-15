@@ -288,7 +288,7 @@ function renderYearTable(superResult, etfResult, offsetResult) {
 }
 
 function scrollResultsIntoView() {
-  const resultsPanel = document.getElementById('resultsPanel');
+  const resultsPanel = document.getElementById('results');
   if (!resultsPanel) return;
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Source for the **Salary Sacrifice Calculator** KashVector tool — compares three strategies for redirecting pre-tax salary: superannuation salary sacrifice, ETF/stock investing, and mortgage offset. Australian tax model including Division 293, franking credits, CGT discount, and super earnings tax.
+Source for the **Salary Sacrifice Calculator** KashVector tool — compares three strategies for redirecting pre-tax salary: superannuation salary sacrifice, ETF/stock investing, and mortgage offset. Australian tax model including Division 293, Division 296, 2026-27 income tax brackets, franking credits, CGT discount, and super earnings tax.
 
 ## Development and deployment
 
@@ -36,9 +36,9 @@ config.js → utils.js → calc/super.js → calc/etf.js → calc/offset.js → 
 
 | File | Role |
 |---|---|
-| `config.js` | Constants: tax rates, caps, thresholds (`CONCESSIONAL_CAP`, `DIV293_THRESHOLD`, `DEFAULT_EMPLOYER_SUPER_RATE`, etc.) |
+| `config.js` | Constants: tax rates, caps, thresholds (`CONCESSIONAL_CAP`, `DIV293_THRESHOLD`, `DIV296_LSBT`, `DIV296_VLSBT`, `DEFAULT_EMPLOYER_SUPER_RATE`, etc.) |
 | `utils.js` | Pure helpers: `marginalRate()`, `fmt()`, `fmtM()`, `parseMoney()`, `formatMoneyInput()`, `safe()` |
-| `calc/super.js` | `superProjection(inputs)` — super accumulation with Div 293, employer contributions, concessional cap check |
+| `calc/super.js` | `superProjection(inputs)` — super accumulation with Div 293, Div 296, employer contributions, concessional cap check |
 | `calc/etf.js` | `etfProjection(inputs)` — ETF portfolio with franking credits, CGT cost base tracking |
 | `calc/offset.js` | `offsetProjection(inputs)` — mortgage offset phase then post-mortgage reinvestment |
 | `app.js` | DOM controller: input formatting, debounced live updates, localStorage persistence, `calculate()`, all render functions |
@@ -50,8 +50,8 @@ config.js → utils.js → calc/super.js → calc/etf.js → calc/offset.js → 
 superProjection({ salary, currentAge, retirementAge, monthlyPreTax, employerSuperRate,
                   currentSuperBalance, totalReturn, dividendYield })
 // → { snapshots[{year,age,superBalance}], finalBalance, contributionsTaxRate,
-//     div293Applies, capBreached, annualTaxSaving, netAnnualContribution,
-//     employerAnnualContribution, superAfterTaxReturn }
+//     div293Applies, div296Applies, div296TotalTax, capBreached, annualTaxSaving,
+//     netAnnualContribution, employerAnnualContribution, superAfterTaxReturn }
 
 etfProjection({ salary, currentAge, retirementAge, monthlyPreTax,
                 currentPortfolioBalance, totalReturn, dividendYield, frankingPct })
@@ -68,9 +68,11 @@ offsetProjection({ salary, currentAge, retirementAge, monthlyPreTax,
 
 - **Comparison basis:** super gets the pre-tax sacrifice amount (taxed at 15%/30%); ETF and offset receive the after-tax equivalent (`monthlyPreTax * 12 * (1 - marginalRate)`)
 - **Div 293:** assessment base = `salary + employerAnnual` (sacrifice nets out); extra 15% applies to `min(totalConcessional, div293Base - $250k)`
+- **Div 296 (from 1 July 2026):** extra tax on super earnings for balances above $3M — 15% extra on earnings in $3M–$10M tier, 25% extra above $10M; applied annually inside the projection loop
 - **ETF cost base:** reinvested net dividends increase cost base each year (prevents CGT overstatement at retirement)
 - **Offset model:** mortgage runs its full `mortgageTerm` unchanged; interest saved = `offsetBalance × mortgageRate`; post-mortgage the balance reinvests at an estimated after-tax return
 - **Super earnings:** income taxed at 15%, capital gains at 10% (2/3 inclusion × 15%)
+- **2026-27 income tax brackets** applied in `utils.js` `marginalRate()`
 
 ### KashVector design conventions
 
