@@ -345,12 +345,122 @@ main {
   margin-top: 4px;
 }
 
+.card-sub-combined {
+  color: var(--kv-warn);
+  font-weight: 600;
+}
+
 .card-title {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--kv-text);
   margin-bottom: 14px;
 }
+
+/* ── Offset insights card ── */
+
+.offset-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0 0;
+}
+
+@media (max-width: 500px) {
+  .offset-stats { grid-template-columns: 1fr; }
+}
+
+.offset-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--kv-muted);
+}
+
+.offset-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--kv-warn);
+  margin-top: 4px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.offset-stat-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--kv-warn);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.offset-stat-badge-warn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.offset-stat-sub {
+  font-size: 0.78rem;
+  color: var(--kv-muted);
+  margin-top: 3px;
+}
+
+.offset-note {
+  font-size: 0.85rem;
+  color: var(--kv-muted);
+  line-height: 1.6;
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--kv-border);
+}
+
+.offset-note strong { color: var(--kv-warn); }
+
+.offset-note-warn {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  color: var(--kv-muted);
+}
+.offset-note-warn strong { color: #ef4444; }
+
+.offset-mode-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.offset-mode-label {
+  font-size: 0.82rem;
+  color: var(--kv-muted);
+  white-space: nowrap;
+}
+
+.offset-mode-select {
+  background: var(--kv-bg);
+  border: 1px solid var(--kv-border);
+  border-radius: 6px;
+  color: var(--kv-text);
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.offset-mode-select:focus { border-color: var(--kv-accent); }
 
 /* ── Chart card ── */
 

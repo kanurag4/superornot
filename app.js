@@ -2,6 +2,15 @@
 // ONLY file allowed to touch the DOM, window, or localStorage.
 // Zero calculation logic — all calc is delegated to pure functions in calc/*.js.
 
+// ─── Post-payoff investment mode (not persisted — resets on page load) ───────
+
+let postPayoffMode = 'etf';
+
+function setPostPayoffMode(val) {
+  postPayoffMode = val;
+  calculate();
+}
+
 // ─── localStorage persistence ────────────────────────────────────────────────
 
 const LS_KEY = 'kv_super_compare_inputs';
@@ -129,39 +138,181 @@ function renderWealthCards(superResult, superBaseResult, etfResult, offsetResult
   const superBaseline = superBaseResult.finalBalance;
   const superAdded    = superFinal - superBaseline;
   const etfFinal      = etfResult.finalAfterTax;
-  const offFinal      = offsetResult.finalWealth;
 
-  // Determine winner — use === maxVal so ties show multiple winners
+  // Offset card always shows the mortgage-phase-only balance (fixed — does not change with mode).
+  // Post-payoff reinvestment total (finalWealth) is shown separately in the insights card.
+  const offFinal = offsetResult.mortgagePhaseWealth;
+
+  // Combined "Offset → [mode]" total shown as a supplemental comparison line.
+  const combinedTotal = offsetResult.finalWealth;
+  const paidOffEarly  = !!offsetResult.mortgagePaidOffYear;
+  const activeMode    = offsetResult.postPayoffMode;
+
+  const offSub = offsetResult.mortgagePaidOffYear
+    ? `Mortgage cleared year ${offsetResult.mortgagePaidOffYear} · balance at payoff`
+    : `Interest saved: ${fmt(offsetResult.interestSavedOverLife)}`;
+
+  const superContribNote = superResult.div293Applies
+    ? 'Contributions taxed at 30% (Div 293)'
+    : 'Contributions taxed at 15%';
+
+  const superCombinedLine = paidOffEarly && activeMode === 'super'
+    ? `<div class="card-sub card-sub-combined">Offset → Super path adds additional: ${fmt(combinedTotal)}</div>`
+    : '';
+  const etfCombinedLine = paidOffEarly && activeMode === 'etf'
+    ? `<div class="card-sub card-sub-combined">Offset → ETF path adds additional: ${fmt(combinedTotal)}</div>`
+    : '';
+
   const maxVal = Math.max(superFinal, etfFinal, offFinal);
   const superWins  = superFinal === maxVal;
   const etfWins    = etfFinal   === maxVal;
   const offsetWins = offFinal   === maxVal;
 
-  const currentAge = parseInt(document.getElementById('currentAge').value) || 35;
-  const years = retirementAge - currentAge;
-
-  const etfSub   = `After CGT (${fmt(etfResult.cgt)} est.)`;
-  const offSub   = offsetResult.mortgagePaidOffYear
-    ? `Mortgage paid off year ${offsetResult.mortgagePaidOffYear}`
-    : `Interest saved: ${fmt(offsetResult.totalInterestSaved)}`;
-
   container.innerHTML =
     `<div class="card summary-card card-super${superWins ? ' pass' : ''}">
       <div class="card-label">Super</div>
       <div class="card-value">${fmt(superFinal)}</div>
-      <div class="card-sub">Without sacrifice: ${fmtM(superBaseline)}</div>
-      <div class="card-sub">Sacrifice adds: +${fmtM(superAdded)}</div>
+      <div class="card-sub">${superContribNote}</div>
+      <div class="card-sub">of which salary sacrifice: ${fmtM(superAdded)}</div>
+      ${superCombinedLine}
     </div>` +
     `<div class="card summary-card card-etf${etfWins ? ' pass' : ''}">
       <div class="card-label">ETFs (after CGT)</div>
       <div class="card-value">${fmt(etfFinal)}</div>
-      <div class="card-sub">${etfSub}</div>
+      <div class="card-sub">After CGT (${fmt(etfResult.cgt)} est.)</div>
+      ${etfCombinedLine}
     </div>` +
     `<div class="card summary-card card-offset${offsetWins ? ' pass' : ''}">
       <div class="card-label">Offset</div>
       <div class="card-value">${fmt(offFinal)}</div>
       <div class="card-sub">${offSub}</div>
     </div>`;
+}
+
+// ─── Offset insights card ────────────────────────────────────────────────────
+
+function renderOffsetInsights(offsetResult, mortgageBalance, currentAge) {
+  const container = document.getElementById('offsetInsights');
+
+  if (!mortgageBalance || mortgageBalance <= 0) {
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+
+  const {
+    termSavedYears,
+    effectiveTermYears,
+    originalTermYears,
+    interestSavedOverLife,
+    mortgagePaidOffYear,
+    afterTaxReturn,
+    postPayoffReturn,
+    postPayoffMode: activeMode,
+    finalWealth,
+    snapshots,
+    remainingBalanceAtRetirement,
+    remainingTermAtRetirement,
+  } = offsetResult;
+
+  const termSavedRounded    = Math.round(termSavedYears);
+  const effectiveTermRounded = Math.round(effectiveTermYears);
+  const paidOffEarly        = termSavedYears >= 0.5;
+  const returnPct           = (postPayoffReturn * 100).toFixed(1);
+
+  // Balance at the effective payoff year
+  let balanceAtPayoff = 0;
+  if (mortgagePaidOffYear && snapshots.length >= mortgagePaidOffYear) {
+    balanceAtPayoff = snapshots[mortgagePaidOffYear - 1].offsetBalance;
+  }
+
+  // Term stat — check outlasts-retirement first; paidOffEarly uses full-term amortization
+  // which can show "paid off at year 17" even when retirement is at year 15.
+  const termHtml = remainingBalanceAtRetirement > 0
+    ? `<div class="offset-stat">
+        <div class="offset-stat-label">Loan term</div>
+        <div class="offset-stat-value">${originalTermYears} yrs
+          <span class="offset-stat-badge offset-stat-badge-warn">${remainingTermAtRetirement} yr${remainingTermAtRetirement !== 1 ? 's' : ''} past retirement</span>
+        </div>
+        <div class="offset-stat-sub">Loan ends after your retirement age</div>
+      </div>`
+    : paidOffEarly
+    ? `<div class="offset-stat">
+        <div class="offset-stat-label">Loan paid off</div>
+        <div class="offset-stat-value">Year ${effectiveTermRounded}
+          <span class="offset-stat-badge">${termSavedRounded} yr${termSavedRounded !== 1 ? 's' : ''} early</span>
+        </div>
+        <div class="offset-stat-sub">Original term: ${originalTermYears} years</div>
+      </div>`
+    : `<div class="offset-stat">
+        <div class="offset-stat-label">Loan term</div>
+        <div class="offset-stat-value">${originalTermYears} yrs</div>
+        <div class="offset-stat-sub">Increase contributions to pay off early</div>
+      </div>`;
+
+  const interestHtml =
+    `<div class="offset-stat">
+      <div class="offset-stat-label">Interest saved (life of loan)</div>
+      <div class="offset-stat-value">${fmt(interestSavedOverLife)}</div>
+      <div class="offset-stat-sub">vs. no offset account</div>
+    </div>`;
+
+  // Mode selector — only shown when mortgage is paid off before retirement
+  let modeSelectorHtml = '';
+  if (mortgagePaidOffYear) {
+    modeSelectorHtml =
+      `<div class="offset-mode-selector">
+        <span class="offset-mode-label">After payoff, reinvest in:</span>
+        <select class="offset-mode-select" onchange="setPostPayoffMode(this.value)">
+          <option value="etf"  ${activeMode === 'etf'   ? 'selected' : ''}>ETFs (after-tax)</option>
+          <option value="super" ${activeMode === 'super' ? 'selected' : ''}>Super salary sacrifice</option>
+        </select>
+      </div>`;
+  }
+
+  // Post-payoff note
+  let noteHtml = '';
+  if (mortgagePaidOffYear && balanceAtPayoff > 0) {
+    const payoffAge = currentAge + mortgagePaidOffYear;
+    const strategyName = activeMode === 'super' ? 'Super salary sacrifice' : 'ETFs';
+    const rateNote = activeMode === 'super'
+      ? `${returnPct}% p.a. after super earnings tax (contributions taxed at 15%)`
+      : `${returnPct}% p.a. after tax`;
+    noteHtml =
+      `<div class="offset-note">
+        <strong>Debt-free at age ${payoffAge} (year ${mortgagePaidOffYear}):</strong>
+        from here your savings reinvest as <strong>${strategyName}</strong> at ${rateNote}.
+        The "Offset → ${strategyName}" path as a whole reaches
+        <strong>${fmt(finalWealth)}</strong> by retirement — an alternative to going
+        straight into ${strategyName} from day one.
+      </div>`;
+  } else if (remainingBalanceAtRetirement > 0) {
+    noteHtml =
+      `<div class="offset-note offset-note-warn">
+        <strong>⚠ Mortgage not cleared by retirement:</strong>
+        at retirement you will still have approximately
+        <strong>${fmt(remainingBalanceAtRetirement)}</strong> outstanding
+        with <strong>${remainingTermAtRetirement} year${remainingTermAtRetirement !== 1 ? 's' : ''}</strong>
+        remaining on the loan.
+        The offset account has saved ${fmt(interestSavedOverLife)} in interest over the life of the loan.
+      </div>`;
+  } else {
+    noteHtml =
+      `<div class="offset-note">
+        The offset account saves interest each year and the accumulated balance of ${fmt(finalWealth)} is
+        available at retirement. Increase your monthly contribution to unlock early payoff.
+      </div>`;
+  }
+
+  container.innerHTML =
+    `<div class="card-title">Offset strategy — mortgage impact</div>
+    ${modeSelectorHtml}
+    <div class="offset-stats">
+      ${termHtml}
+      ${interestHtml}
+    </div>
+    ${noteHtml}`;
 }
 
 // ─── Chart ───────────────────────────────────────────────────────────────────
@@ -172,7 +323,7 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
   const years = retirementAge - currentAge;
   if (years <= 0) return;
 
-  const labels   = superResult.snapshots.map(s => `Age ${s.age}`);
+  const labels    = superResult.snapshots.map(s => `Age ${s.age}`);
   const superData = superResult.snapshots.map(s => s.superBalance);
   const etfData   = etfResult.snapshots.map(s => s.etfAfterTax);
   const offData   = offsetResult.snapshots.map(s => s.offsetBalance);
@@ -337,7 +488,12 @@ function calculate() {
   const offsetResult = offsetProjection({
     salary, currentAge, retirementAge, monthlyPreTax,
     mortgageBalance, mortgageRate, mortgageTerm, totalReturn, dividendYield,
+    postPayoffMode,
   });
+
+  // If the mortgage isn't cleared before retirement, post-payoff mode is irrelevant —
+  // reset so a stale 'super' selection from a previous calculation doesn't persist.
+  if (!offsetResult.mortgagePaidOffYear) postPayoffMode = 'etf';
 
   // Banners
   toggleBanner('bannerDiv293', superResult.div293Applies);
@@ -352,6 +508,7 @@ function calculate() {
   // Render sections
   renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance);
   renderWealthCards(superResult, superBaseResult, etfResult, offsetResult, retirementAge);
+  renderOffsetInsights(offsetResult, mortgageBalance, currentAge);
   renderChart(superResult, etfResult, offsetResult, currentAge, retirementAge);
   renderYearTable(superResult, etfResult, offsetResult);
 
