@@ -29,8 +29,9 @@ cd C:/Projects/StockAnalysis && git add -A && git commit -m "..." && git push
 
 ### Script load order (matters — globals must exist before use)
 ```
-config.js → utils.js → calc/super.js → calc/etf.js → calc/offset.js → Chart.js CDN → app.js
+/kv-nav.js (shared root) → config.js → utils.js → calc/super.js → calc/etf.js → calc/offset.js → Chart.js CDN → app.js
 ```
+`kv-nav.js` is loaded from the site root (`/kv-nav.js`) and injects the cross-tool navigation bar after the `<header>`. It 404s during local dev (no parent site), but works correctly on the deployed domain.
 
 ### File responsibilities
 
