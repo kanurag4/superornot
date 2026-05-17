@@ -44,20 +44,33 @@ function superProjection(inputs) {
     : 0;
   const div293ExtraTax = Math.max(0, div293Taxable) * DIV293_EXTRA_TAX;
 
-  // Standard 15% contributions tax on sacrifice (employer contributions use same rate)
+  const mr = marginalRate(salary);
+
   const sacrificeStandardTax = annualSacrifice * STANDARD_CONTRIBUTIONS_TAX;
-  const netAnnualContribution = annualSacrifice - sacrificeStandardTax -
-    Math.min(div293ExtraTax, annualSacrifice * DIV293_EXTRA_TAX);
-  // Modelling approximation: Div 293 is assessed on total concessional contributions; the sacrifice's
-  // share is capped at sacrifice × 15% to avoid over-attributing the liability to the sacrifice alone.
+  // Div 293 share is capped at sacrifice × 15% to avoid over-attributing the liability.
+  const sacrificeDiv293Tax   = Math.min(div293ExtraTax, annualSacrifice * DIV293_EXTRA_TAX);
 
-  // Employer contribution net (standard 15% only — employer contributions never get marginal rate)
-  const employerAnnualContribution = employerAnnual * (1 - STANDARD_CONTRIBUTIONS_TAX);
+  // --- Concessional cap ---
+  const capBreached        = totalConcessional > CONCESSIONAL_CAP;
+  const excessConcessional = Math.max(0, totalConcessional - CONCESSIONAL_CAP);
 
-  // Effective contributions tax rate on sacrifice (for display)
-  const sacrificeDiv293Tax = Math.min(div293ExtraTax, annualSacrifice * DIV293_EXTRA_TAX);
-  const effectiveContributionsTaxRate = annualSacrifice > 0
-    ? (sacrificeStandardTax + sacrificeDiv293Tax) / annualSacrifice
+  // Excess CC are included in assessable income at mr; 15% offset applies (fund already paid 15%),
+  // so net extra tax = (mr - 15%) on the excess, attributed proportionally to sacrifice and employer.
+  const capExtraTax          = excessConcessional * Math.max(0, mr - STANDARD_CONTRIBUTIONS_TAX);
+  const sacrificeCapExtraTax = totalConcessional > 0
+    ? capExtraTax * (annualSacrifice / totalConcessional) : 0;
+
+  const netAnnualContribution = annualSacrifice
+    - sacrificeStandardTax - sacrificeDiv293Tax - sacrificeCapExtraTax;
+  const employerAnnualContribution = employerAnnual * (1 - STANDARD_CONTRIBUTIONS_TAX)
+    - (capExtraTax - sacrificeCapExtraTax);
+
+  // Effective contributions tax rate — computed on within-cap sacrifice for display.
+  const withinCapSacrifice = totalConcessional > 0
+    ? annualSacrifice * Math.min(totalConcessional, CONCESSIONAL_CAP) / totalConcessional
+    : annualSacrifice;
+  const effectiveContributionsTaxRate = withinCapSacrifice > 0
+    ? (withinCapSacrifice * STANDARD_CONTRIBUTIONS_TAX + sacrificeDiv293Tax) / withinCapSacrifice
     : STANDARD_CONTRIBUTIONS_TAX;
 
   // --- After-tax return inside super ---
@@ -69,18 +82,15 @@ function superProjection(inputs) {
     dividendYield * (1 - SUPER_EARNINGS_INCOME_TAX) +
     (totalReturn - dividendYield) * (1 - SUPER_CGT_TAX);
 
-  // --- Annual tax saving vs paying marginal rate on the sacrifice ---
-  const mr = marginalRate(salary);
-  const annualTaxSaving = (mr - effectiveContributionsTaxRate) * annualSacrifice;
-
-  // --- Concessional cap check ---
-  const capBreached = totalConcessional > CONCESSIONAL_CAP;
+  // Only within-cap sacrifice has a concessional advantage; uses bracket-aware tax for threshold crossings.
+  const annualTaxSaving = taxOnSacrifice(salary, withinCapSacrifice)
+    - withinCapSacrifice * effectiveContributionsTaxRate;
 
   // --- Edge case: no projection period ---
   if (years <= 0) {
     return {
       snapshots: [],
-      finalBalance: 0,
+      finalBalance: currentSuperBalance,
       contributionsTaxRate: effectiveContributionsTaxRate,
       div293Applies,
       netAnnualContribution,
@@ -111,7 +121,7 @@ function superProjection(inputs) {
     let div296Tax = 0;
     if (balWithContribs > DIV296_LSBT) {
       div296Applies = true;
-      const grossEarnings = balWithContribs * totalReturn;
+      const grossEarnings = Math.max(0, balWithContribs * totalReturn); // negative returns incur no Div 296
       const tier1Amount = Math.min(balWithContribs, DIV296_VLSBT) - DIV296_LSBT;
       const tier2Amount = Math.max(0, balWithContribs - DIV296_VLSBT);
       div296Tax = grossEarnings * (

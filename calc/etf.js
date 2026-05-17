@@ -34,10 +34,21 @@ function etfProjection(inputs) {
 
   // --- After-tax annual contribution ---
   // The ETF strategy invests the after-tax equivalent of the pre-tax sacrifice amount.
-  const afterTaxContribution = monthlyPreTax * 12 * (1 - mr);
+  // Uses bracket-aware taxOnSacrifice to handle threshold crossings correctly.
+  const afterTaxContribution = monthlyPreTax * 12 - taxOnSacrifice(salary, monthlyPreTax * 12);
 
-  // --- Edge cases: no projection period or no contribution and no existing balance ---
-  if (years <= 0 || (monthlyPreTax === 0 && currentPortfolioBalance === 0)) {
+  // --- Edge cases ---
+  if (years <= 0) {
+    return {
+      snapshots: [],
+      finalPortfolio: currentPortfolioBalance,
+      finalAfterTax: currentPortfolioBalance,
+      cgt: 0,
+      netAnnualContribution: afterTaxContribution,
+      mr,
+    };
+  }
+  if (monthlyPreTax === 0 && currentPortfolioBalance === 0) {
     return {
       snapshots: [],
       finalPortfolio: 0,
@@ -50,50 +61,43 @@ function etfProjection(inputs) {
 
   // --- Year-by-year projection ---
   // Contribution assumed at start of year, then earnings applied.
+  // indexedCostBase inflates by CGT_INFLATION_RATE each year, which correctly assigns each
+  // contribution's holding period: year-1 funds are indexed `years` times, year-Y funds once.
   const snapshots = [];
-  let portfolio = currentPortfolioBalance;
-  let costBase  = currentPortfolioBalance;  // assume purchased at current market value
+  let portfolio       = currentPortfolioBalance;
+  let costBase        = currentPortfolioBalance;
+  let indexedCostBase = currentPortfolioBalance;
 
   for (let y = 1; y <= years; y++) {
-    // Add contribution at start of year (earns full year's return — matches super.js convention)
-    portfolio += afterTaxContribution;
-    costBase  += afterTaxContribution;
+    portfolio       += afterTaxContribution;
+    costBase        += afterTaxContribution;
+    indexedCostBase += afterTaxContribution;
 
-    // Annual earnings
     const grossDividend  = portfolio * dividendYield;
     const frankingCredit = grossDividend * frankingPct * (30 / 70);
     const taxableIncome  = grossDividend + frankingCredit;
     const taxOnDividend  = taxableIncome * mr - frankingCredit;
-    // taxOnDividend negative = refund flows through as extra income (Australian franking refund)
     const netDividend    = grossDividend - taxOnDividend;
-    // negative if dividendYield > totalReturn — allowed, not clamped
     const capitalGrowth  = portfolio * (totalReturn - dividendYield);
 
-    portfolio += capitalGrowth + netDividend;
-    costBase  += netDividend;   // already-taxed dividends increase cost base (no double CGT)
+    portfolio       += capitalGrowth + netDividend;
+    costBase        += netDividend;
+    indexedCostBase += netDividend;
 
-    // Mid-year "if sold today" estimate (for chart).
-    // New CGT rules (2026 budget): inflate cost base at 2% p.a. then apply max(30%, mr).
-    const indexedCostBaseNow = costBase * Math.pow(1 + CGT_INFLATION_RATE, y);
-    const unrealisedGain     = Math.max(0, portfolio - indexedCostBaseNow);
-    const estimatedCGT       = unrealisedGain * Math.max(CGT_MIN_RATE, mr);
-    const etfAfterTax        = portfolio - estimatedCGT;
+    // Inflate indexed cost base by one year — carries forward correctly for all prior contributions.
+    indexedCostBase *= (1 + CGT_INFLATION_RATE);
 
-    snapshots.push({
-      year: y,
-      age: currentAge + y,
-      portfolio,
-      etfAfterTax,
-    });
+    const unrealisedGain = Math.max(0, portfolio - indexedCostBase);
+    const estimatedCGT   = unrealisedGain * Math.max(CGT_MIN_RATE, mr);
+    const etfAfterTax    = portfolio - estimatedCGT;
+
+    snapshots.push({ year: y, age: currentAge + y, portfolio, etfAfterTax });
   }
 
   // --- At retirement: apply true CGT (2026 budget rules) ---
-  // Inflate total accumulated cost base for the full holding period (approximation — slightly
-  // overstates indexation benefit for later contributions; conservative for CGT liability).
-  const indexedCostBase = costBase * Math.pow(1 + CGT_INFLATION_RATE, years);
-  const capitalGain     = Math.max(0, portfolio - indexedCostBase);
-  const cgt             = capitalGain * Math.max(CGT_MIN_RATE, mr);
-  const finalAfterTax   = portfolio - cgt;
+  const capitalGain   = Math.max(0, portfolio - indexedCostBase);
+  const cgt           = capitalGain * Math.max(CGT_MIN_RATE, mr);
+  const finalAfterTax = portfolio - cgt;
 
   return {
     snapshots,

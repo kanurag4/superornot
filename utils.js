@@ -61,8 +61,25 @@ function formatMoneyInput(el) {
   el.setSelectionRange(newPos, newPos);
 }
 
+// Total income tax (base + 2% Medicare) for 2026-27 brackets.
+function incomeTax(income) {
+  const n = Math.max(0, (income != null && isFinite(income)) ? Number(income) : 0);
+  if (n <= 18200)  return 0;
+  if (n <= 45000)  return (n - 18200) * 0.17;
+  if (n <= 135000) return (45000 - 18200) * 0.17 + (n - 45000) * 0.32;
+  if (n <= 190000) return (45000 - 18200) * 0.17 + (135000 - 45000) * 0.32 + (n - 135000) * 0.39;
+  return            (45000 - 18200) * 0.17 + (135000 - 45000) * 0.32 + (190000 - 135000) * 0.39 + (n - 190000) * 0.47;
+}
+
+// Incremental income tax on the sacrificed amount — handles bracket crossings correctly.
+function taxOnSacrifice(salary, annualSacrifice) {
+  return incomeTax(salary) - incomeTax(Math.max(0, salary - annualSacrifice));
+}
+
 if (typeof module !== 'undefined') module.exports = {
   marginalRate,
+  incomeTax,
+  taxOnSacrifice,
   safe,
   fmt,
   fmtM,

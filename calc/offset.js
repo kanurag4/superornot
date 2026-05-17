@@ -17,7 +17,8 @@
 //   dividendYield   - decimal — for post-mortgage reinvestment after-tax return
 
 // Month-by-month amortization: finds actual payoff date and total interest with offset.
-function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualContrib) {
+// retirementMonths: if provided, captures the gross mortgage balance at that month (for Bug 4 fix).
+function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualContrib, retirementMonths) {
   const n = termYears * 12;
   const monthly = annualRate / 12;
 
@@ -28,6 +29,7 @@ function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualCont
       termSavedYears: 0,
       totalInterestWithoutOffset: 0,
       interestSavedOverLife: 0,
+      mortgageBalAtRetirement: 0,
     };
   }
 
@@ -44,6 +46,7 @@ function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualCont
   let offsetBal = 0;
   let totalInterestWithOffset = 0;
   let effectiveMonths = n;
+  let mortgageBalAtRetirement = 0;
 
   for (let m = 1; m <= n; m++) {
     offsetBal += monthlyContrib;
@@ -51,6 +54,11 @@ function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualCont
     const interest = effectivePrincipal * monthly;
     totalInterestWithOffset += interest;
     mortBal -= (pmt - interest);
+
+    if (retirementMonths && m === retirementMonths) {
+      mortgageBalAtRetirement = Math.max(0, mortBal);
+    }
+
     // Break when the remaining balance hits 0 OR when the offset fully covers the
     // remaining debt (interest has been 0 for this month; remaining payoff months
     // are ceil(mortBal / pmt) which we approximate as current month).
@@ -66,6 +74,7 @@ function _computeAmortization(balance, annualRate, termYears, afterTaxAnnualCont
     termSavedYears: (n - effectiveMonths) / 12,
     totalInterestWithoutOffset,
     interestSavedOverLife: Math.max(0, totalInterestWithoutOffset - totalInterestWithOffset),
+    mortgageBalAtRetirement,
   };
 }
 
@@ -84,19 +93,22 @@ function offsetProjection(inputs) {
 
   const years = retirementAge - currentAge;
   const mr = marginalRate(salary);
-  const afterTaxContribution = monthlyPreTax * 12 * (1 - mr);
+  // Bracket-aware tax on the sacrifice amount handles threshold crossings correctly.
+  const afterTaxContribution = monthlyPreTax * 12 - taxOnSacrifice(salary, monthlyPreTax * 12);
 
   // 2026 budget: capital gains taxed at max(30%, marginalRate) — no 50% discount.
   const afterTaxReturn =
     dividendYield * (1 - mr) +
     (totalReturn - dividendYield) * (1 - Math.max(CGT_MIN_RATE, mr));
 
-  // Amortization: effective payoff date with monthly offset contributions
+  // Amortization: effective payoff date with monthly offset contributions.
+  // Pass years * 12 so the simulation captures the offset-aware mortgage balance at retirement.
   const amort = _computeAmortization(
     initialMortgageBalance,
     mortgageRate,
     mortgageTerm,
-    afterTaxContribution
+    afterTaxContribution,
+    years * 12
   );
 
   // Post-payoff investment mode: 'etf' (default) or 'super'
@@ -143,9 +155,9 @@ function offsetProjection(inputs) {
   if (years <= 0) return zeroResult;
   if (monthlyPreTax === 0 && initialMortgageBalance === 0) return zeroResult;
 
-  // Paid off early = effective payoff year falls within the projection window
+  // Paid off = effective payoff year falls within or at the end of the projection window
   const mortgagePaidOffYear =
-    initialMortgageBalance > 0 && effectivePayoffYr < years ? effectivePayoffYr : null;
+    initialMortgageBalance > 0 && effectivePayoffYr <= years ? effectivePayoffYr : null;
 
   const snapshots = [];
   let offsetBalance      = 0;
@@ -184,16 +196,12 @@ function offsetProjection(inputs) {
   if (!mortgagePaidOffYear) mortgagePhaseWealth = offsetBalance;
 
   // Remaining mortgage balance at retirement — only meaningful when the loan outlasts retirement.
-  // Uses standard amortization: B_k = P*(1+r)^k - PMT*((1+r)^k - 1)/r
+  // Uses the offset-aware simulation result from _computeAmortization (not the standard formula,
+  // which ignores the offset reducing interest and thus understates principal paydown).
   let remainingBalanceAtRetirement = 0;
   let remainingTermAtRetirement = 0;
   if (initialMortgageBalance > 0 && !mortgagePaidOffYear && amort.monthlyRepayment > 0) {
-    const k = years * 12;
-    const r = mortgageRate / 12;
-    const pmt = amort.monthlyRepayment;
-    remainingBalanceAtRetirement = r === 0
-      ? Math.max(0, initialMortgageBalance - pmt * k)
-      : Math.max(0, initialMortgageBalance * Math.pow(1 + r, k) - pmt * (Math.pow(1 + r, k) - 1) / r);
+    remainingBalanceAtRetirement = amort.mortgageBalAtRetirement;
     remainingTermAtRetirement = Math.max(0, mortgageTerm - years);
   }
 

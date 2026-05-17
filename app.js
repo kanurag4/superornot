@@ -52,7 +52,8 @@ function scheduleLiveUpdate() {
 function updateDerived() {
   const salary = parseMoney(document.getElementById('salary'));
   const monthly = parseMoney(document.getElementById('monthlyPreTax'));
-  const empRate = parseFloat(document.getElementById('employerRate').value) || DEFAULT_EMPLOYER_SUPER_RATE * 100;
+  const empRateRaw = parseFloat(document.getElementById('employerRate').value);
+  const empRate = isNaN(empRateRaw) ? DEFAULT_EMPLOYER_SUPER_RATE * 100 : empRateRaw;
   const mr = marginalRate(salary);
   const mrPct = Math.round(mr * 100);
 
@@ -63,8 +64,9 @@ function updateDerived() {
   if (salary > DIV293_THRESHOLD) salaryText += ' · Div 293 applies';
   document.getElementById('salaryDerived').textContent = salaryText;
 
-  // afterTaxDerived
-  const afterTax = monthly * (1 - mr);
+  // afterTaxDerived — bracket-aware: monthly sacrifice may cross a tax threshold
+  const taxSavedMonthly = taxOnSacrifice(salary, monthly * 12) / 12;
+  const afterTax = monthly - taxSavedMonthly;
   document.getElementById('afterTaxDerived').textContent =
     monthly > 0 ? `After-tax equivalent: ${fmt(afterTax)}/mo` : '';
 
@@ -459,14 +461,19 @@ function calculate() {
   const retirementAge      = parseInt(document.getElementById('retirementAge').value)    || 60;
 
   if (retirementAge <= currentAge) return;
-  const employerSuperRate  = (parseFloat(document.getElementById('employerRate').value)  || 12) / 100;
+  // readPct: treats empty/NaN as the given default but preserves genuine zero entries.
+  function readPct(id, def) {
+    const v = parseFloat(document.getElementById(id).value);
+    return (isNaN(v) ? def : v) / 100;
+  }
+  const employerSuperRate  = readPct('employerRate', 12);
   const currentSuperBalance = parseMoney(document.getElementById('superBalance'));
   const mortgageBalance    = parseMoney(document.getElementById('mortgageBalance'));
-  const mortgageRate       = (parseFloat(document.getElementById('mortgageRate').value)  || 6.0) / 100;
-  const mortgageTerm       = parseInt(document.getElementById('mortgageTerm').value)     || 25;
-  const totalReturn        = (parseFloat(document.getElementById('totalReturn').value)   || 8.0) / 100;
-  const dividendYield      = (parseFloat(document.getElementById('dividendYield').value) || 4.0) / 100;
-  const frankingPct        = (parseFloat(document.getElementById('frankingPct').value)   || 70)  / 100;
+  const mortgageRate       = readPct('mortgageRate', 6.0);
+  const mortgageTerm       = parseInt(document.getElementById('mortgageTerm').value) || 25;
+  const totalReturn        = readPct('totalReturn', 8.0);
+  const dividendYield      = readPct('dividendYield', 4.0);
+  const frankingPct        = readPct('frankingPct', 70);
 
   // Run projections
   const superResult = superProjection({
