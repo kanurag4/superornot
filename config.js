@@ -4,7 +4,10 @@ const STANDARD_CONTRIBUTIONS_TAX = 0.15;
 const DIV293_EXTRA_TAX = 0.15;          // additional tax; total becomes 0.30 for high earners
 const SUPER_EARNINGS_INCOME_TAX = 0.15; // tax on income (dividends/interest) inside super
 const SUPER_CGT_TAX = 0.10; // 15% tax on 2/3 of gain (1/3 inclusion reduction for assets held >12mo)
-const CGT_DISCOUNT = 0.50;             // 50% CGT discount for assets held > 12 months (personal)
+// 2026 budget: 50% CGT discount removed for assets acquired after 12 May 2026.
+// Replaced by cost-base indexation at 2% p.a. and a 30% minimum rate on the indexed gain.
+const CGT_INFLATION_RATE = 0.02; // default inflation for cost-base indexation
+const CGT_MIN_RATE       = 0.30; // minimum CGT rate on indexed gain (applies even below 30% marginal rate)
 const DEFAULT_EMPLOYER_SUPER_RATE = 0.12; // 12% SG rate 2025-26
 
 // Division 296 — Better Targeted Super Concessions (effective 1 July 2026)
@@ -20,7 +23,8 @@ if (typeof module !== 'undefined') module.exports = {
   DIV293_EXTRA_TAX,
   SUPER_EARNINGS_INCOME_TAX,
   SUPER_CGT_TAX,
-  CGT_DISCOUNT,
+  CGT_INFLATION_RATE,
+  CGT_MIN_RATE,
   DEFAULT_EMPLOYER_SUPER_RATE,
   DIV296_LSBT,
   DIV296_VLSBT,

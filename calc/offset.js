@@ -2,7 +2,7 @@
 // Pure function — zero DOM access.
 //
 // Depends on globals (loaded before this file in the browser):
-//   config.js  → CGT_DISCOUNT
+//   config.js  → CGT_MIN_RATE
 //   utils.js   → marginalRate(income)
 //
 // inputs:
@@ -86,9 +86,10 @@ function offsetProjection(inputs) {
   const mr = marginalRate(salary);
   const afterTaxContribution = monthlyPreTax * 12 * (1 - mr);
 
+  // 2026 budget: capital gains taxed at max(30%, marginalRate) — no 50% discount.
   const afterTaxReturn =
     dividendYield * (1 - mr) +
-    (totalReturn - dividendYield) * (1 - mr * CGT_DISCOUNT);
+    (totalReturn - dividendYield) * (1 - Math.max(CGT_MIN_RATE, mr));
 
   // Amortization: effective payoff date with monthly offset contributions
   const amort = _computeAmortization(

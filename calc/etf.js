@@ -2,7 +2,7 @@
 // Pure function — zero DOM access.
 //
 // Depends on globals (loaded before this file in the browser):
-//   config.js  → CGT_DISCOUNT
+//   config.js  → CGT_INFLATION_RATE, CGT_MIN_RATE
 //   utils.js   → marginalRate(income)
 //
 // inputs:
@@ -72,10 +72,12 @@ function etfProjection(inputs) {
     portfolio += capitalGrowth + netDividend;
     costBase  += netDividend;   // already-taxed dividends increase cost base (no double CGT)
 
-    // Mid-year "if sold today" estimate (for chart)
-    const unrealisedGain = Math.max(0, portfolio - costBase);
-    const estimatedCGT   = unrealisedGain * CGT_DISCOUNT * mr;
-    const etfAfterTax    = portfolio - estimatedCGT;
+    // Mid-year "if sold today" estimate (for chart).
+    // New CGT rules (2026 budget): inflate cost base at 2% p.a. then apply max(30%, mr).
+    const indexedCostBaseNow = costBase * Math.pow(1 + CGT_INFLATION_RATE, y);
+    const unrealisedGain     = Math.max(0, portfolio - indexedCostBaseNow);
+    const estimatedCGT       = unrealisedGain * Math.max(CGT_MIN_RATE, mr);
+    const etfAfterTax        = portfolio - estimatedCGT;
 
     snapshots.push({
       year: y,
@@ -85,10 +87,13 @@ function etfProjection(inputs) {
     });
   }
 
-  // --- At retirement: apply true CGT ---
-  const capitalGain  = Math.max(0, portfolio - costBase);
-  const cgt          = capitalGain * CGT_DISCOUNT * mr;
-  const finalAfterTax = portfolio - cgt;
+  // --- At retirement: apply true CGT (2026 budget rules) ---
+  // Inflate total accumulated cost base for the full holding period (approximation — slightly
+  // overstates indexation benefit for later contributions; conservative for CGT liability).
+  const indexedCostBase = costBase * Math.pow(1 + CGT_INFLATION_RATE, years);
+  const capitalGain     = Math.max(0, portfolio - indexedCostBase);
+  const cgt             = capitalGain * Math.max(CGT_MIN_RATE, mr);
+  const finalAfterTax   = portfolio - cgt;
 
   return {
     snapshots,
