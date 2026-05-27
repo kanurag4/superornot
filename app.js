@@ -6,6 +6,15 @@
 
 let postPayoffMode = 'etf';
 
+// ─── Carry-forward toggle ─────────────────────────────────────────────────────
+
+function toggleCarryForward() {
+  const enabled = document.getElementById('carryForwardEnabled').checked;
+  document.getElementById('carryForwardFields').classList.toggle('hidden', !enabled);
+  saveInputs();
+  scheduleLiveUpdate();
+}
+
 function setPostPayoffMode(val) {
   postPayoffMode = val;
   calculate();
@@ -17,13 +26,15 @@ const LS_KEY = 'kv_super_compare_inputs';
 
 function saveInputs() {
   const data = {};
-  ['salary', 'monthlyPreTax', 'superBalance', 'mortgageBalance'].forEach(id => {
+  ['salary', 'monthlyPreTax', 'superBalance', 'mortgageBalance',
+   'carryForwardTotal', 'carryForwardPerYear'].forEach(id => {
     data[id] = document.getElementById(id).value;
   });
   ['currentAge', 'retirementAge', 'employerRate', 'mortgageRate', 'mortgageTerm',
     'totalReturn', 'dividendYield', 'frankingPct'].forEach(id => {
     data[id] = document.getElementById(id).value;
   });
+  data.carryForwardEnabled = document.getElementById('carryForwardEnabled').checked;
   localStorage.setItem(LS_KEY, JSON.stringify(data));
 }
 
@@ -33,8 +44,16 @@ function restoreInputs() {
     if (!data) return;
     Object.keys(data).forEach(id => {
       const el = document.getElementById(id);
-      if (el && data[id]) el.value = data[id];
+      if (!el) return;
+      if (el.type === 'checkbox') {
+        el.checked = !!data[id];
+      } else if (data[id]) {
+        el.value = data[id];
+      }
     });
+    // Show/hide carry-forward sub-fields based on restored checkbox state
+    const cfEnabled = document.getElementById('carryForwardEnabled').checked;
+    document.getElementById('carryForwardFields').classList.toggle('hidden', !cfEnabled);
   } catch (e) {
     console.warn('Failed to restore inputs from localStorage:', e);
   }
@@ -54,6 +73,10 @@ function updateDerived() {
   const monthly = parseMoney(document.getElementById('monthlyPreTax'));
   const empRateRaw = parseFloat(document.getElementById('employerRate').value);
   const empRate = isNaN(empRateRaw) ? DEFAULT_EMPLOYER_SUPER_RATE * 100 : empRateRaw;
+  const superBal = parseMoney(document.getElementById('superBalance'));
+  const cfEnabled = document.getElementById('carryForwardEnabled').checked;
+  const carryForwardTotal = cfEnabled ? parseMoney(document.getElementById('carryForwardTotal')) : 0;
+  const carryForwardPerYear = cfEnabled ? parseMoney(document.getElementById('carryForwardPerYear')) : 0;
   const mr = marginalRate(salary);
   const mrPct = Math.round(mr * 100);
 
@@ -71,15 +94,47 @@ function updateDerived() {
     monthly > 0 ? `After-tax equivalent: ${fmt(afterTax)}/mo` : '';
 
   // Concessional cap check (live)
+  // Use the effective cap: carry-forward raises it for year 1 when TSB < $500k.
   const annualSacrifice = monthly * 12;
   const employerAnnual = salary * (empRate / 100);
   const totalConcessional = annualSacrifice + employerAnnual;
+  const carryForwardEligibleLive = superBal < CARRY_FORWARD_TSB_THRESHOLD;
+  const boost1Live = carryForwardEligibleLive ? Math.min(carryForwardPerYear, carryForwardTotal) : 0;
+  const effectiveLiveCap = CONCESSIONAL_CAP + boost1Live;
+  const capLabel = `$${Math.round(effectiveLiveCap).toLocaleString('en-AU')} cap`;
   const capEl = document.getElementById('capDerived');
-  if (totalConcessional > CONCESSIONAL_CAP) {
-    capEl.textContent = `⚠ Employer $${Math.round(employerAnnual).toLocaleString()} + sacrifice $${Math.round(annualSacrifice).toLocaleString()} = $${Math.round(totalConcessional).toLocaleString()} exceeds $30,000 cap`;
+  if (totalConcessional > effectiveLiveCap) {
+    capEl.textContent = `⚠ Employer $${Math.round(employerAnnual).toLocaleString()} + sacrifice $${Math.round(annualSacrifice).toLocaleString()} = $${Math.round(totalConcessional).toLocaleString()} exceeds ${capLabel}`;
     capEl.classList.remove('hidden');
+    capEl.classList.remove('derived-info');
+  } else if (salary > 0 && totalConcessional < effectiveLiveCap) {
+    const remaining = effectiveLiveCap - totalConcessional;
+    capEl.textContent = `💡 $${Math.round(remaining).toLocaleString()} of the ${capLabel} unused — consider increasing salary sacrifice to maximise your tax benefit`;
+    capEl.classList.remove('hidden');
+    capEl.classList.add('derived-info');
   } else {
     capEl.classList.add('hidden');
+    capEl.classList.remove('derived-info');
+  }
+
+  // Carry-forward hint — only relevant when the sub-fields are visible
+  const cfDerived = document.getElementById('carryForwardDerived');
+  if (cfEnabled) {
+    if (superBal >= CARRY_FORWARD_TSB_THRESHOLD) {
+      cfDerived.textContent = '⚠ TSB ≥ $500k — carry-forward rule does not apply';
+      cfDerived.classList.remove('derived-info');
+    } else if (carryForwardTotal > 0 && carryForwardPerYear > 0) {
+      const cfYears = Math.ceil(carryForwardTotal / carryForwardPerYear);
+      const capLabel = `$${(CONCESSIONAL_CAP + boost1Live).toLocaleString('en-AU')}`;
+      cfDerived.textContent = `Cap: ${capLabel}/yr for ${cfYears} yr${cfYears !== 1 ? 's' : ''} — reverts to $30,000 after`;
+      cfDerived.classList.add('derived-info');
+    } else {
+      cfDerived.textContent = '';
+      cfDerived.classList.remove('derived-info');
+    }
+  } else {
+    cfDerived.textContent = '';
+    cfDerived.classList.remove('derived-info');
   }
 }
 
@@ -99,6 +154,9 @@ function renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance
   const superSub = superResult.div293Applies
     ? 'Contributions taxed at 30% (Div 293)'
     : 'Contributions taxed at 15%';
+  const superCarryNote = superResult.effectiveCarryForward > 0
+    ? `<div class="card-sub">Carry-forward: ${fmt(superResult.effectiveCarryForward)}/yr for ${superResult.carryForwardYears} yr${superResult.carryForwardYears !== 1 ? 's' : ''} — cap reverts to $30,000 after</div>`
+    : '';
 
   // ETF — Year 1 net portfolio growth
   let etfValue = fmt(0);
@@ -120,6 +178,7 @@ function renderAnnualCards(superResult, etfResult, offsetResult, mortgageBalance
       <div class="card-label">Super salary sacrifice</div>
       <div class="card-value">${superValue}</div>
       <div class="card-sub">${superSub}</div>
+      ${superCarryNote}
     </div>` +
     `<div class="card summary-card card-etf">
       <div class="card-label">Invest after tax</div>
@@ -157,12 +216,15 @@ function renderWealthCards(superResult, superBaseResult, etfResult, offsetResult
   const superContribNote = superResult.div293Applies
     ? 'Contributions taxed at 30% (Div 293)'
     : 'Contributions taxed at 15%';
+  const wealthCarryNote = superResult.effectiveCarryForward > 0
+    ? `<div class="card-sub">Carry-forward: ${fmt(superResult.effectiveCarryForward)}/yr for ${superResult.carryForwardYears} yr${superResult.carryForwardYears !== 1 ? 's' : ''} — cap reverts to $30,000 after</div>`
+    : '';
 
   const superCombinedLine = paidOffEarly && activeMode === 'super'
-    ? `<div class="card-sub card-sub-combined">Offset → Super path adds additional: ${fmt(combinedTotal)}</div>`
+    ? `<div class="card-sub card-sub-combined">Offset → Super total at retirement: ${fmt(combinedTotal)}</div>`
     : '';
   const etfCombinedLine = paidOffEarly && activeMode === 'etf'
-    ? `<div class="card-sub card-sub-combined">Offset → ETF path adds additional: ${fmt(combinedTotal)}</div>`
+    ? `<div class="card-sub card-sub-combined">Offset → ETF total at retirement: ${fmt(combinedTotal)}</div>`
     : '';
 
   const maxVal = Math.max(superFinal, etfFinal, offFinal);
@@ -176,6 +238,7 @@ function renderWealthCards(superResult, superBaseResult, etfResult, offsetResult
       <div class="card-value">${fmt(superFinal)}</div>
       <div class="card-sub">${superContribNote}</div>
       <div class="card-sub">of which salary sacrifice: ${fmtM(superAdded)}</div>
+      ${wealthCarryNote}
       ${superCombinedLine}
     </div>` +
     `<div class="card summary-card card-etf${etfWins ? ' pass' : ''}">
@@ -460,15 +523,22 @@ function calculate() {
   const currentAge         = parseInt(document.getElementById('currentAge').value)       || 35;
   const retirementAge      = parseInt(document.getElementById('retirementAge').value)    || 60;
 
-  if (retirementAge <= currentAge) return;
+  if (retirementAge <= currentAge) {
+    document.getElementById('placeholder').classList.remove('hidden');
+    document.getElementById('results').classList.add('hidden');
+    return;
+  }
   // readPct: treats empty/NaN as the given default but preserves genuine zero entries.
   function readPct(id, def) {
     const v = parseFloat(document.getElementById(id).value);
     return (isNaN(v) ? def : v) / 100;
   }
   const employerSuperRate  = readPct('employerRate', 12);
-  const currentSuperBalance = parseMoney(document.getElementById('superBalance'));
-  const mortgageBalance    = parseMoney(document.getElementById('mortgageBalance'));
+  const currentSuperBalance  = parseMoney(document.getElementById('superBalance'));
+  const cfEnabled            = document.getElementById('carryForwardEnabled').checked;
+  const carryForwardTotal    = cfEnabled ? parseMoney(document.getElementById('carryForwardTotal'))    : 0;
+  const carryForwardPerYear  = cfEnabled ? parseMoney(document.getElementById('carryForwardPerYear'))  : 0;
+  const mortgageBalance      = parseMoney(document.getElementById('mortgageBalance'));
   const mortgageRate       = readPct('mortgageRate', 6.0);
   const mortgageTerm       = parseInt(document.getElementById('mortgageTerm').value) || 25;
   const totalReturn        = readPct('totalReturn', 8.0);
@@ -479,6 +549,7 @@ function calculate() {
   const superResult = superProjection({
     salary, currentAge, retirementAge, monthlyPreTax,
     employerSuperRate, currentSuperBalance, totalReturn, dividendYield,
+    carryForwardTotal, carryForwardPerYear,
   });
 
   // Employer-only baseline (no salary sacrifice) for wealth card breakdown
@@ -506,6 +577,7 @@ function calculate() {
   toggleBanner('bannerDiv293', superResult.div293Applies);
   toggleBanner('bannerCapBreached', superResult.capBreached);
   toggleBanner('bannerDiv296', superResult.div296Applies);
+  toggleBanner('bannerCarryForwardIneligible', cfEnabled && !superResult.carryForwardEligible);
 
   // Show results
   document.getElementById('placeholder').classList.add('hidden');
@@ -526,13 +598,15 @@ function calculate() {
 
 document.addEventListener('DOMContentLoaded', () => {
   // Bind formatMoneyInput to all money inputs (formatting first)
-  ['salary', 'monthlyPreTax', 'superBalance', 'mortgageBalance'].forEach(id => {
+  ['salary', 'monthlyPreTax', 'superBalance', 'mortgageBalance',
+   'carryForwardTotal', 'carryForwardPerYear'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => formatMoneyInput(el));
   });
 
   // Bind live derived updates (debounced)
-  const liveInputIds = ['salary', 'monthlyPreTax', 'currentAge', 'retirementAge', 'employerRate'];
+  const liveInputIds = ['salary', 'monthlyPreTax', 'currentAge', 'retirementAge', 'employerRate',
+                        'superBalance', 'carryForwardTotal', 'carryForwardPerYear'];
   liveInputIds.forEach(id => {
     document.getElementById(id).addEventListener('input', scheduleLiveUpdate);
   });
