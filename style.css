@@ -219,6 +219,66 @@ main {
   color: var(--kv-accent);
   min-height: 1.1em;
 }
+.derived-info {
+  color: var(--kv-pass);
+}
+
+/* ── Checkbox label ── */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--kv-text);
+  user-select: none;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--kv-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Tooltip ── */
+.tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--kv-card-2);
+  border: 1px solid var(--kv-border);
+  color: var(--kv-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.tip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 20px;
+  top: -4px;
+  background: var(--kv-card-2);
+  border: 1px solid var(--kv-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--kv-text);
+  white-space: pre-wrap;
+  width: min(240px, 80vw);
+  z-index: 10;
+  line-height: 1.5;
+}
+@media (max-width: 400px) {
+  .tip:hover::after { left: 0; }
+}
 
 /* ── Calculate button ── */
 
@@ -611,11 +671,66 @@ footer a:hover {
 .faq-item[open] summary::after { content: '−'; }
 .faq-item p { font-size: 0.85rem; color: var(--kv-muted); line-height: 1.6; margin-top: 8px; }
 
+/* ── Result display options (toggles) ── */
+
+.result-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  background: var(--kv-card);
+  border: 1px solid var(--kv-border);
+  border-radius: 10px;
+}
+
+.checkbox-label.small { font-size: 0.82rem; color: var(--kv-muted); }
+.checkbox-label.small input[type="checkbox"] { width: 14px; height: 14px; }
+
+/* ── Comparison-basis note ── */
+
+.basis-note {
+  font-size: 0.82rem;
+  color: var(--kv-muted);
+  line-height: 1.5;
+  margin-top: -4px;
+}
+
+/* ── Verdict line ── */
+
+.verdict-line {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--kv-text);
+  background: var(--kv-card-2);
+  border-left: 3px solid var(--kv-accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: -4px;
+}
+.verdict-line strong { color: var(--kv-accent); }
+
+/* ── Print-only inputs summary ── */
+
+.print-inputs { display: none; }
+
+.print-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+  font-size: 0.82rem;
+}
+.print-inputs-label { color: #475569; }
+.print-inputs-value { color: #0f172a; font-weight: 600; }
+
 /* ── Print ── */
 
 @media print {
   .app-header,
   .input-panel,
+  .kv-copy-link-btn,
+  .result-options,
+  .sharesight-promo,
+  #nextStepSuggestion,
   footer { display: none; }
 
   body { background: white; color: black; }
@@ -623,6 +738,7 @@ footer a:hover {
   details.card > summary::after { display: none; }
   .table-wrap { overflow: visible; }
   .results-panel { display: block; }
+  .print-inputs { display: block; margin-bottom: 12px; }
 }
 
 /* ── Light mode overrides ── */
@@ -635,3 +751,93 @@ html:not(.dark) {
   --kv-muted:  #64748b;
   --kv-border: #e2e8f0;
 }
+
+/* ── Sharesight affiliate block ── */
+.sharesight-promo { max-width: 900px; margin: 48px auto 0; padding: 0 20px; }
+.sharesight-promo-inner { display: flex; align-items: center; gap: 20px; padding: 18px 22px; background: var(--kv-card); border: 1px solid var(--kv-border); border-radius: 12px; }
+.sharesight-logo-wrap { flex: 0 0 auto; background: #fff; border-radius: 8px; padding: 6px 10px; display: flex; align-items: center; }
+.sharesight-logo-wrap img { height: 28px; width: auto; display: block; }
+.sharesight-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sharesight-offer { font-size: 0.85rem; color: var(--kv-accent) !important; }
+.sharesight-copy > p:not(.sharesight-offer) { font-size: 0.85rem; color: var(--kv-muted); line-height: 1.5; }
+.sharesight-cta { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sharesight-cta a { display: inline-block; padding: 9px 18px; background: var(--kv-accent); color: #0f172a; font-weight: 600; font-size: 0.85rem; border-radius: 8px; text-decoration: none; white-space: nowrap; transition: opacity 0.15s; }
+.sharesight-cta a:hover { opacity: 0.85; }
+.sharesight-affiliate-note { font-size: 0.7rem; color: var(--kv-muted); text-align: right; }
+@media (max-width: 600px) {
+  .sharesight-promo-inner { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .sharesight-cta { align-items: flex-start; width: 100%; }
+  .sharesight-cta a { width: 100%; text-align: center; }
+  .sharesight-affiliate-note { text-align: left; }
+}
+
+/* ── Copy-link button ── */
+.kv-copy-link-btn {
+  background: color-mix(in srgb, var(--kv-accent) 14%, var(--kv-card));
+  border: 1px solid var(--kv-accent);
+  color: var(--kv-accent);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--kv-accent) 25%, transparent);
+  transition: background 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.kv-copy-link-btn:hover {
+  background: var(--kv-accent);
+  color: var(--kv-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--kv-accent) 40%, transparent);
+}
+.kv-copy-link-btn.copied {
+  background: color-mix(in srgb, var(--kv-pass) 14%, var(--kv-card));
+  color: var(--kv-pass);
+  border-color: var(--kv-pass);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--kv-pass) 25%, transparent);
+}
+
+/* ── Profile pre-fill chip ── */
+.kv-prefill-chip {
+  font-size: 0.78rem;
+  color: var(--kv-accent);
+  margin-top: 4px;
+}
+.kv-prefill-chip button {
+  background: none;
+  border: none;
+  color: var(--kv-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0;
+}
+
+/* ── Cross-tool next-step suggestion card ── */
+.kv-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--kv-card-2);
+  border: 1px solid var(--kv-accent);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--kv-text);
+  font-size: 0.88rem;
+  transition: background 0.15s;
+}
+.kv-suggestion:hover { background: var(--kv-card); }
+.kv-suggestion-arrow { color: var(--kv-accent); flex-shrink: 0; }
+.kv-suggestion-close {
+  background: none;
+  border: none;
+  color: var(--kv-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.kv-suggestion-close:hover { color: var(--kv-text); }

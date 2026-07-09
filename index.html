@@ -2,14 +2,15 @@
 <html lang="en" class="dark">
 <head>
   <script src="/kv-theme.js"></script>
+  <script src="/kv-scenario.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f172a">
-  <title>Salary Sacrifice Calculator — Super vs ETFs vs Offset | KashVector</title>
-  <meta name="description" content="Compare salary sacrifice into super vs ETF investing vs mortgage offset. Full Australian tax model: Division 293, 15% super earnings tax, CGT discount. Free, no sign-up.">
+  <title>Super vs Mortgage vs ETF Calculator — Where Should Extra Money Go? | KashVector</title>
+  <meta name="description" content="Should your spare cash go into super, your mortgage offset, or ETFs? Compare all three side by side with 2026–27 Australian tax rates. Free, no sign-up.">
   <link rel="canonical" href="https://kashvector.com/super-compare/">
-  <meta property="og:title" content="Salary Sacrifice Calculator — Super vs ETFs vs Offset | KashVector">
-  <meta property="og:description" content="Compare salary sacrifice into super, ETF investing, and mortgage offset using full Australian tax rules. Free, no sign-up.">
+  <meta property="og:title" content="Super vs Mortgage vs ETF Calculator — Where Should Extra Money Go? | KashVector">
+  <meta property="og:description" content="Should your spare cash go into super, your mortgage offset, or ETFs? Compare all three side by side with 2026–27 Australian tax rates. Free, no sign-up.">
   <meta property="og:url" content="https://kashvector.com/super-compare/">
   <meta property="og:type" content="website">
   <script type="application/ld+json">
@@ -38,6 +39,8 @@
       { "@type": "Question", "name": "What happens to offset savings after the mortgage is paid off?", "acceptedAnswer": { "@type": "Answer", "text": "Once the mortgage is gone, you choose how to redeploy the money: either invest in ETFs after tax, or continue salary-sacrificing into super. A mode selector appears in the Offset insights card when your loan is cleared before retirement. The final wealth figure reflects both the interest-saving phase and the chosen reinvestment phase." } },
       { "@type": "Question", "name": "What happens if my contributions exceed the $30,000 concessional cap?", "acceptedAnswer": { "@type": "Answer", "text": "The $30,000 cap applies to all concessional contributions combined — your salary sacrifice plus employer super. If you exceed it, the ATO includes the excess in your assessable income and taxes it at your marginal rate. A 15% tax offset applies (because the fund already paid 15% contributions tax on the excess), so the net extra tax is your marginal rate minus 15%. The calculator models this correctly: only contributions within the cap receive the 15% concessional tax rate." } },
       { "@type": "Question", "name": "What tax rates does this calculator use?", "acceptedAnswer": { "@type": "Answer", "text": "The calculator uses the 2026–27 income tax brackets (effective 1 July 2026): 17% up to $45,000; 32% up to $135,000; 39% up to $190,000; 47% above $190,000 — all including the 2% Medicare levy. Super contributions are taxed at 15% (or 30% if Division 293 applies). For ETFs, the 2026 budget rules apply: the 50% CGT discount is replaced by cost-base indexation at 2% p.a., and a minimum 30% tax rate applies to the indexed gain." } },
+      { "@type": "Question", "name": "What is the concessional cap carry-forward rule?", "acceptedAnswer": { "@type": "Answer", "text": "If your Total Superannuation Balance (TSB) was below $500,000 at the previous 30 June, you can use any unused concessional cap space from the past five financial years on top of the standard $30,000 annual cap. Unused amounts accumulate on a rolling five-year basis and drop off after five years. Once used, those years' unused space is consumed." } },
+      { "@type": "Question", "name": "How do I find my available carry-forward amount?", "acceptedAnswer": { "@type": "Answer", "text": "Log in to ATO via MyGov and navigate to Super → Manage → Carry-forward concessional contributions. The ATO pre-calculates your available amount based on reported contributions. Enter that total in the Carry-forward cap available field. If your TSB is $500,000 or above you are not eligible and the calculator will ignore the field." } },
       { "@type": "Question", "name": "Is this calculator free and private?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — completely free, no sign-up required, and no data is sent to any server. All calculations run entirely in your browser. Nothing you enter is stored or transmitted." } }
     ]
   }
@@ -92,6 +95,31 @@
         </div>
 
         <div class="field">
+          <label class="checkbox-label">
+            <input type="checkbox" id="carryForwardEnabled" onchange="toggleCarryForward()">
+            Carry-forward cap available
+            <span class="tip" data-tip="If your Total Super Balance (TSB) was under $500,000 at the previous 30 June, you can use unused concessional cap space from the past 5 years on top of the $30,000 annual cap. Tick this box to enter your available total and choose how much to draw down each year. Check your available amount in ATO MyGov → Super → Manage → Carry-forward contributions.">?</span>
+          </label>
+        </div>
+        <div id="carryForwardFields" class="hidden">
+          <div class="field">
+            <label for="carryForwardTotal">Total available (from ATO)</label>
+            <div class="input-wrap">
+              <span class="currency-prefix">$</span>
+              <input type="text" inputmode="numeric" id="carryForwardTotal" class="money-input" placeholder="0">
+            </div>
+          </div>
+          <div class="field">
+            <label for="carryForwardPerYear">Use per year</label>
+            <div class="input-wrap">
+              <span class="currency-prefix">$</span>
+              <input type="text" inputmode="numeric" id="carryForwardPerYear" class="money-input" placeholder="0">
+            </div>
+            <div class="derived" id="carryForwardDerived"></div>
+          </div>
+        </div>
+
+        <div class="field">
           <label for="monthlyPreTax">Extra amount (pre-tax/mo)</label>
           <div class="input-wrap">
             <span class="currency-prefix">$</span>
@@ -121,6 +149,7 @@
             <input type="text" inputmode="numeric" id="superBalance" class="money-input" placeholder="80,000">
           </div>
         </div>
+
       </div>
 
       <!-- Group 3: Mortgage (Offset Strategy) -->
@@ -187,6 +216,7 @@
 
     <!-- ── Results panel ── -->
     <section class="results-panel" id="resultsPanel">
+      <button id="copyLinkBtn" class="kv-copy-link-btn" type="button">🔗 Create link to share this scenario</button>
 
       <!-- Warning banners (hidden by default, shown by JS) -->
       <div class="banner banner-warn hidden" id="bannerDiv293">
@@ -198,29 +228,63 @@
       <div class="banner banner-warn hidden" id="bannerDiv296">
         Division 296 tax applies — your projected super balance will exceed $3 million. Earnings on the portion above $3M are taxed at an additional 15% (30% total), and above $10M at an additional 25% (40% total). This is already reflected in the projected super balance shown.
       </div>
+      <div class="banner banner-warn hidden" id="bannerCarryForwardIneligible">
+        Carry-forward cap ignored — your current super balance is $500,000 or above, so the ATO carry-forward rule does not apply. Only members with a Total Super Balance below $500,000 at the previous 30 June can use unused cap space from prior years.
+      </div>
+      <div class="banner banner-warn hidden" id="bannerPreservationAge">
+        ⚠ Super is inaccessible until age 60 (the preservation age). If you retire earlier, your projected super balance keeps growing but you can't withdraw it — ETF and offset funds remain accessible immediately.
+      </div>
 
       <!-- Placeholder shown before first calculation -->
       <div class="placeholder" id="placeholder">
-        <p>Enter your details and click Calculate to compare your options.</p>
+        <p id="placeholderText">Enter your details and click Calculate to compare your options.</p>
       </div>
 
       <!-- Results (hidden until calculated) -->
       <div class="hidden" id="results">
 
+        <!-- Display option toggles -->
+        <div class="result-options" id="resultOptions">
+          <label class="checkbox-label small">
+            <input type="checkbox" id="realDollarsToggle" onchange="toggleRealDollars()">
+            Show in today's dollars
+            <span class="tip" data-tip="Deflates retirement-year figures by 2% p.a. inflation so they're comparable to today's cost of living. Year 1 figures are already in today's dollars.">?</span>
+          </label>
+          <label class="checkbox-label small">
+            <input type="checkbox" id="sensitivityToggle" onchange="toggleSensitivity()">
+            Show return sensitivity (±2%)
+          </label>
+          <label class="checkbox-label small">
+            <input type="checkbox" id="splitToggle" onchange="toggleSplit()">
+            Compare a 50/50 split
+          </label>
+        </div>
+
+        <!-- Print-only inputs summary -->
+        <div class="print-inputs" id="printInputs"></div>
+
         <!-- Annual benefit section -->
         <div class="section-title">Year 1 benefit</div>
+        <div class="basis-note" id="basisNote"></div>
         <div class="strategy-cards" id="annualCards">
           <!-- 3 cards rendered by JS -->
         </div>
 
         <!-- Wealth at retirement section -->
         <div class="section-title">Wealth at retirement (age <span id="retireAgeLabel">60</span>)</div>
+        <div class="verdict-line" id="verdictLine"></div>
         <div class="strategy-cards" id="wealthCards">
           <!-- 3 cards rendered by JS -->
         </div>
 
         <!-- Offset mortgage impact card (shown when mortgageBalance > 0) -->
         <div id="offsetInsights" class="card card-offset hidden"></div>
+
+        <!-- Sensitivity check card (toggle-controlled) -->
+        <div id="sensitivityCard" class="card hidden"></div>
+
+        <!-- 50/50 split comparison note (toggle-controlled) -->
+        <div id="splitNote" class="card hidden"></div>
 
         <!-- Projection chart -->
         <div class="card chart-card">
@@ -249,10 +313,29 @@
           </div>
         </details>
 
+        <!-- Cross-tool next-step suggestion (rendered by JS) -->
+        <div id="nextStepSuggestion"></div>
+
       </div>
     </section>
   </div>
 </main>
+
+<section class="sharesight-promo" aria-label="Affiliate promotion">
+  <div class="sharesight-promo-inner">
+    <div class="sharesight-logo-wrap">
+      <img src="/sharesight-logo.jpg" alt="Sharesight" width="120" height="28">
+    </div>
+    <div class="sharesight-copy">
+      <p class="sharesight-offer">⭐ <strong>Special offer for KashVector users</strong> — save 4 months on an annual plan.</p>
+      <p>Your broker doesn't show the full picture. Sharesight tracks true portfolio performance — dividends, currency gains, and capital gains reports at tax time. Trusted by 500,000+ investors worldwide.</p>
+    </div>
+    <div class="sharesight-cta">
+      <a href="https://www.sharesight.com/au/kashvector/" target="_blank" rel="noopener sponsored">Try free</a>
+      <span class="sharesight-affiliate-note">Affiliate link</span>
+    </div>
+  </div>
+</section>
 
 <section class="tool-info">
   <div class="tool-about">
@@ -299,6 +382,23 @@
       <p>The calculator uses the 2026–27 income tax brackets (effective 1 July 2026): 17% up to $45,000; 32% up to $135,000; 39% up to $190,000; 47% above $190,000 — all including the 2% Medicare levy. Super contributions are taxed at 15% (or 30% if Division 293 applies). Super earnings are taxed at 15% on income and 10% on capital gains, plus any Division 296 surcharge for large balances. For ETFs and the offset post-payoff phase, the 2026 budget rules apply: the 50% CGT discount is replaced by cost-base indexation at 2% p.a., and a minimum 30% tax rate applies to the indexed gain (regardless of marginal rate).</p>
     </details>
     <details class="faq-item">
+      <summary>How does the calculator work out super's growth rate?</summary>
+      <p>Super earnings are taxed at a lower rate than personal income, which is why they compound faster. The calculator splits your expected return into two components you enter:</p>
+      <ul>
+        <li><strong>Dividend yield</strong> — the income portion (dividends and interest). Taxed at 15% inside super.</li>
+        <li><strong>Capital growth</strong> — the remainder (total return minus dividend yield). Taxed at 10% inside super (the fund gets a one-third CGT discount on assets held more than 12 months, so 15% × ⅔ = 10%).</li>
+      </ul>
+      <p>For example, with an 8% expected return and 4% dividend yield, super earns 4% × 0.85 + 4% × 0.90 = <strong>7.0% after tax</strong> — compared to a higher personal tax rate on the same investment held outside super. This difference compounding over decades is the core advantage of super salary sacrifice.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What is the concessional cap carry-forward rule?</summary>
+      <p>If your Total Superannuation Balance (TSB) was below $500,000 at the previous 30 June, you can use any unused concessional cap space from the past five financial years on top of the standard $30,000 annual cap. For example, if you only used $20,000 of your cap last year, the $10,000 unused amount rolls forward and can be contributed this year — giving you an effective cap above $30,000. The unused amounts accumulate on a rolling five-year basis: amounts older than five years drop off. This is a one-time boost, not a recurring uplift — once you use carry-forward amounts, those years' unused space is consumed.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How do I find my available carry-forward amount?</summary>
+      <p>Log in to your ATO account via MyGov, then navigate to: <strong>Super → Manage → Carry-forward concessional contributions</strong>. The ATO pre-calculates your available carry-forward balance based on your reported contributions. Enter that total figure in the "Carry-forward cap available" field. If your TSB is $500,000 or above, you are not eligible and the calculator will ignore the field and show a warning.</p>
+    </details>
+    <details class="faq-item">
       <summary>Is this calculator free and private?</summary>
       <p>Yes — completely free, no sign-up required, and no data is sent to any server. All calculations run entirely in your browser. Nothing you enter is stored or transmitted.</p>
     </details>
@@ -308,6 +408,7 @@
 <footer>
   <p>Not financial advice. Projections assume constant returns — actual results will vary. Consult a licensed financial adviser for personal advice.</p>
   <p><a href="../">← All KashVector tools</a></p>
+  <p>© 2026 KashVector. All rights reserved.</p>
 </footer>
 
 <script src="/kv-nav.js"></script>

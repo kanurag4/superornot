@@ -16,6 +16,9 @@ const DIV296_VLSBT = 10_000_000; // very large super balance threshold
 const DIV296_TIER1_EXTRA = 0.15; // extra tax on earnings: $3M–$10M (total earnings tax → 30%)
 const DIV296_TIER2_EXTRA = 0.25; // extra tax on earnings: above $10M (total earnings tax → 40%)
 
+// Carry-forward concessional cap: eligibility threshold (TSB must be below this at prior 30 June)
+const CARRY_FORWARD_TSB_THRESHOLD = 500_000;
+
 if (typeof module !== 'undefined') module.exports = {
   CONCESSIONAL_CAP,
   DIV293_THRESHOLD,
@@ -30,4 +33,5 @@ if (typeof module !== 'undefined') module.exports = {
   DIV296_VLSBT,
   DIV296_TIER1_EXTRA,
   DIV296_TIER2_EXTRA,
+  CARRY_FORWARD_TSB_THRESHOLD,
 };

@@ -16,6 +16,9 @@
 //   currentSuperBalance - existing super balance ($)
 //   totalReturn         - expected annual total return, decimal e.g. 0.08
 //   dividendYield       - income (dividends/interest) portion of return, decimal e.g. 0.04
+//   carryForwardTotal   - total unused concessional cap available from past 5 years ($, default 0)
+//   carryForwardPerYear - amount of carry-forward to draw down each year ($, default 0)
+//                         Both only applied when currentSuperBalance < CARRY_FORWARD_TSB_THRESHOLD ($500k)
 
 function superProjection(inputs) {
   const {
@@ -27,6 +30,8 @@ function superProjection(inputs) {
     currentSuperBalance = 0,
     totalReturn        = 0,
     dividendYield      = 0,
+    carryForwardTotal   = 0,
+    carryForwardPerYear = 0,
   } = inputs;
 
   const years = retirementAge - currentAge;
@@ -51,23 +56,37 @@ function superProjection(inputs) {
   const sacrificeDiv293Tax   = Math.min(div293ExtraTax, annualSacrifice * DIV293_EXTRA_TAX);
 
   // --- Concessional cap ---
-  const capBreached        = totalConcessional > CONCESSIONAL_CAP;
-  const excessConcessional = Math.max(0, totalConcessional - CONCESSIONAL_CAP);
+  // Carry-forward only applies when TSB at prior 30 June was under $500k (ATO rule).
+  // We use currentSuperBalance as the proxy — close enough for projection purposes.
+  const carryForwardEligible = currentSuperBalance < CARRY_FORWARD_TSB_THRESHOLD;
+  const availableCF  = carryForwardEligible ? Math.max(0, carryForwardTotal)   : 0;
+  const annualCFUse  = carryForwardEligible ? Math.max(0, carryForwardPerYear) : 0;
 
-  // Excess CC are included in assessable income at mr; 15% offset applies (fund already paid 15%),
-  // so net extra tax = (mr - 15%) on the excess, attributed proportionally to sacrifice and employer.
-  const capExtraTax          = excessConcessional * Math.max(0, mr - STANDARD_CONTRIBUTIONS_TAX);
-  const sacrificeCapExtraTax = totalConcessional > 0
-    ? capExtraTax * (annualSacrifice / totalConcessional) : 0;
+  // Year 1 boost — used for tax-saving display and result card note.
+  const boost1            = Math.min(annualCFUse, availableCF);
+  const effectiveCarryForward = boost1;
+  const carryForwardYears = annualCFUse > 0 ? Math.ceil(availableCF / annualCFUse) : 0;
 
-  const netAnnualContribution = annualSacrifice
-    - sacrificeStandardTax - sacrificeDiv293Tax - sacrificeCapExtraTax;
-  const employerAnnualContribution = employerAnnual * (1 - STANDARD_CONTRIBUTIONS_TAX)
-    - (capExtraTax - sacrificeCapExtraTax);
+  // Helper: compute after-cap-tax contribution amounts for a given effective cap.
+  function capAmounts(cap) {
+    const excess      = Math.max(0, totalConcessional - cap);
+    const extraTax    = excess * Math.max(0, mr - STANDARD_CONTRIBUTIONS_TAX);
+    const sacExtraTax = totalConcessional > 0 ? extraTax * (annualSacrifice / totalConcessional) : 0;
+    return {
+      netContrib: annualSacrifice - sacrificeStandardTax - sacrificeDiv293Tax - sacExtraTax,
+      empContrib: employerAnnual * (1 - STANDARD_CONTRIBUTIONS_TAX) - (extraTax - sacExtraTax),
+    };
+  }
 
-  // Effective contributions tax rate — computed on within-cap sacrifice for display.
+  // Ongoing (no carry-forward) amounts — returned for reference and used when CF exhausted.
+  const { netContrib: netAnnualContribution, empContrib: employerAnnualContribution } = capAmounts(CONCESSIONAL_CAP);
+
+  // capBreached reflects the ongoing situation (when carry-forward is exhausted) — used for banner.
+  const capBreached = totalConcessional > CONCESSIONAL_CAP;
+
+  // Effective contributions tax rate — computed on within-cap sacrifice for Year 1 display.
   const withinCapSacrifice = totalConcessional > 0
-    ? annualSacrifice * Math.min(totalConcessional, CONCESSIONAL_CAP) / totalConcessional
+    ? annualSacrifice * Math.min(totalConcessional, CONCESSIONAL_CAP + boost1) / totalConcessional
     : annualSacrifice;
   const effectiveContributionsTaxRate = withinCapSacrifice > 0
     ? (withinCapSacrifice * STANDARD_CONTRIBUTIONS_TAX + sacrificeDiv293Tax) / withinCapSacrifice
@@ -93,11 +112,16 @@ function superProjection(inputs) {
       finalBalance: currentSuperBalance,
       contributionsTaxRate: effectiveContributionsTaxRate,
       div293Applies,
+      div296Applies: false,
+      div296TotalTax: 0,
       netAnnualContribution,
       employerAnnualContribution,
       annualTaxSaving,
       superAfterTaxReturn,
       capBreached,
+      carryForwardEligible,
+      effectiveCarryForward,
+      carryForwardYears,
     };
   }
 
@@ -107,9 +131,14 @@ function superProjection(inputs) {
   let superBalance = currentSuperBalance;
   let div296Applies = false;
   let div296TotalTax = 0;
+  let remainingCF = availableCF;
 
   for (let y = 1; y <= years; y++) {
-    const balWithContribs = superBalance + netAnnualContribution + employerAnnualContribution;
+    // Draw down carry-forward each year until the pool is exhausted.
+    const boost = Math.min(annualCFUse, remainingCF);
+    remainingCF = Math.max(0, remainingCF - boost);
+    const { netContrib, empContrib } = capAmounts(CONCESSIONAL_CAP + boost);
+    const balWithContribs = superBalance + netContrib + empContrib;
     const afterTaxEarnings = balWithContribs * superAfterTaxReturn;
 
     // Div 296: annual additional tax on gross earnings for the portion of balance in each tier.
@@ -147,6 +176,9 @@ function superProjection(inputs) {
     annualTaxSaving,
     superAfterTaxReturn,
     capBreached,
+    carryForwardEligible,
+    effectiveCarryForward,
+    carryForwardYears,
   };
 }
 

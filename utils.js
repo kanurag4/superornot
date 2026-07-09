@@ -42,7 +42,12 @@ function fmtM(v) {
 }
 
 function parseMoney(el) {
-  return parseInt(el.value.replace(/,/g, '')) || 0;
+  return parseFloat(el.value.replace(/,/g, '')) || 0;
+}
+
+function formatMoneyVal(n) {
+  const rounded = Math.round(n);
+  return rounded > 0 ? rounded.toLocaleString('en-AU') : '';
 }
 
 function formatMoneyInput(el) {
@@ -84,5 +89,6 @@ if (typeof module !== 'undefined') module.exports = {
   fmt,
   fmtM,
   parseMoney,
+  formatMoneyVal,
   formatMoneyInput,
 };
