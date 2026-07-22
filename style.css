@@ -1,20 +1,5 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --kv-bg:      #0b1120;
-  --kv-card:    #111a30;
-  --kv-card-2:  #182342;
-  --kv-text:    #f5f7fc;
-  --kv-muted:   #93a0bd;
-  --kv-accent:  #f5a623;
-  --kv-accent-h: #ffb84d;
-  --kv-border:  #223052;
-  --kv-pass:    #22c55e;
-  --kv-fail:    #ef4444;
-  --kv-warn:    #f97316;
-  --kv-super:   #3b82f6;
-}
-
 body {
   font-family: 'Carlito', system-ui, -apple-system, sans-serif;
   background: var(--kv-bg);
@@ -694,17 +679,6 @@ footer a:hover {
 }
 
 /* ── Light mode overrides ── */
-
-html:not(.dark) {
-  --kv-bg:     #faf8f4;
-  --kv-card:   #ffffff;
-  --kv-card-2: #f1ede4;
-  --kv-text:   #16202b;
-  --kv-muted:  #4d5c6b;
-  --kv-border: #e7e2d8;
-  --kv-accent: #1a3a5f;
-  --kv-warn:   #b45309;
-}
 
 /* ── Sharesight affiliate block ── */
 .sharesight-promo { max-width: 900px; margin: 48px auto 0; padding: 0 20px; }
