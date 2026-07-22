@@ -33,6 +33,12 @@ cd C:/Projects/StockAnalysis && git add -A && git commit -m "..." && git push
 ```
 /kv-theme.js → /kv-scenario.js (both in <head>) → /kv-nav.js → config.js → utils.js → calc/super.js → calc/etf.js → calc/offset.js → Chart.js CDN → app.js
 ```
+
+## Design System
+
+Follows KashVector design rules (`C:\Projects\Rules\kashvector-design.md`). **Migrated to the "Ink & Amber" / "Paper & Ink" rebrand 2026-07-22** — dark mode bg `#0b1120`, accent `#f5a623`; light mode bg `#faf8f4`, accent `#1a3a5f`; Carlito font. Full token table and rollout tracker: `Kashvector.md`'s "Ink & Amber rebrand — rollout status" section (in `C:\Projects\StockAnalysis`).
+
+The projection chart's 4 line colors (`renderChart()` in `app.js`) are a categorical scheme, not all accent-tied: Super uses the semantic `--kv-super` token (`#3b82f6`, blue — unchanged by the rebrand, per the design system's rule that semantic colors like super/pass/fail don't migrate with the accent), ETFs is green, Offset moved from old-warn to new-warn amber, and the 50/50-split line is indigo (`#818cf8`, unchanged — distinct hue, no collision risk).
 `kv-nav.js` and `kv-scenario.js` are loaded from the site root and 404 during local dev (no parent site) but work correctly on the deployed domain. `kv-nav.js` injects the cross-tool navigation bar after the `<header>`. `kv-scenario.js` provides `window.kvScenario` — scenario-link URL params, the shared cross-tool profile (localStorage key `kv-profile`), and the "next step" suggestion card. See the Cross-tool UX section below.
 
 ### File responsibilities

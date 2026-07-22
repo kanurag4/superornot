@@ -783,8 +783,8 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
     {
       label: 'Offset',
       data: offData,
-      borderColor: '#f59e0b',
-      backgroundColor: 'rgba(245,158,11,0.08)',
+      borderColor: '#f97316',
+      backgroundColor: 'rgba(249,115,22,0.08)',
       borderWidth: 2,
       pointRadius: 0,
       fill: false,
@@ -817,7 +817,7 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { position: 'top', labels: { color: '#94a3b8', font: { size: 12 } } },
+        legend: { position: 'top', labels: { color: '#93a0bd', font: { size: 12 } } },
         tooltip: {
           callbacks: {
             label: ctx => `${ctx.dataset.label}: ${fmtM(ctx.raw)}`,
@@ -826,17 +826,17 @@ function renderChart(superResult, etfResult, offsetResult, currentAge, retiremen
       },
       scales: {
         x: {
-          ticks: { color: '#94a3b8', maxTicksLimit: 8 },
-          grid: { color: 'rgba(51,65,85,0.5)' },
+          ticks: { color: '#93a0bd', maxTicksLimit: 8 },
+          grid: { color: 'rgba(34,48,82,0.5)' },
         },
         y: {
           afterFit: scale => { scale.width = 88; },
           ticks: {
-            color: '#94a3b8',
+            color: '#93a0bd',
             maxTicksLimit: 6,
             callback: v => fmtM(v),
           },
-          grid: { color: 'rgba(51,65,85,0.5)' },
+          grid: { color: 'rgba(34,48,82,0.5)' },
         },
       },
     },
